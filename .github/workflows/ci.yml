@@ -40,6 +40,9 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Build shared package
+        run: npm run build --workspace=@ecg-she/shared
+
       - name: Lint
         run: npm run lint --workspaces --if-present
 
