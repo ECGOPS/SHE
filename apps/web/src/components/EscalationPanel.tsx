@@ -232,7 +232,7 @@ export function EscalationPanel({
       case 'reopen':
         return 'Why should this be reopened?';
     }
-  }, [dialog]);
+  }, [dialog, entityType, requireActionBeforeClose]);
 
   return (
     <Card>

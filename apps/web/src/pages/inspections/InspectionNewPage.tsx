@@ -174,6 +174,7 @@ export function InspectionNewPage() {
 
   useEffect(() => {
     if (!cameraOpen) return;
+    const video = videoRef.current;
     let cancelled = false;
     const start = async () => {
       setCameraError(null);
@@ -188,9 +189,9 @@ export function InspectionNewPage() {
           return;
         }
         streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
+        if (video) {
+          video.srcObject = stream;
+          await video.play();
         }
       } catch (err) {
         setCameraError((err as Error).message || 'Unable to open the camera.');
@@ -201,7 +202,7 @@ export function InspectionNewPage() {
       cancelled = true;
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
-      if (videoRef.current) videoRef.current.srcObject = null;
+      if (video) video.srcObject = null;
     };
   }, [cameraOpen]);
 

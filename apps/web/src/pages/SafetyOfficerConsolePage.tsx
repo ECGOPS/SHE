@@ -362,11 +362,20 @@ export function SafetyOfficerConsolePage() {
     enabled: !!session?.user.id,
   });
 
-  const incidentItems = (incidents.data?.items ?? []) as unknown as AnyRecord[];
-  const hazardItems = (hazards.data?.items ?? []) as unknown as AnyRecord[];
-  const capaItems = (capas.data?.items ?? []) as AnyRecord[];
-  const ptwItems = (ptw.data?.items ?? []) as AnyRecord[];
-  const nmItems = (nearMiss.data?.items ?? []) as unknown as AnyRecord[];
+  const incidentItems = useMemo(
+    () => (incidents.data?.items ?? []) as unknown as AnyRecord[],
+    [incidents.data?.items],
+  );
+  const hazardItems = useMemo(
+    () => (hazards.data?.items ?? []) as unknown as AnyRecord[],
+    [hazards.data?.items],
+  );
+  const capaItems = useMemo(() => (capas.data?.items ?? []) as AnyRecord[], [capas.data?.items]);
+  const ptwItems = useMemo(() => (ptw.data?.items ?? []) as AnyRecord[], [ptw.data?.items]);
+  const nmItems = useMemo(
+    () => (nearMiss.data?.items ?? []) as unknown as AnyRecord[],
+    [nearMiss.data?.items],
+  );
 
   /* ── Derived queues ──────────────────────────────────────────────────── */
 
@@ -627,7 +636,7 @@ export function SafetyOfficerConsolePage() {
 
       {actionQueue.length === 0 && !loading && (
         <Alert severity="success" variant="outlined">
-          You're all clear — no items in your scope currently require action. Nice work.
+          You&apos;re all clear — no items in your scope currently require action. Nice work.
         </Alert>
       )}
 

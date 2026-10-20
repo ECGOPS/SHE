@@ -162,7 +162,7 @@ export function JsaDetailPage() {
       severity: step.severity ?? '',
     }));
     setStepDrafts(next.length ? next : [emptyStep()]);
-  }, [seed]);
+  }, [data, seed]);
 
   if (isLoading || !data) return <Typography>Loading...</Typography>;
 

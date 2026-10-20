@@ -18,7 +18,7 @@ import {
   ValidatorConstraint,
   ValidatorConstraintInterface,
 } from 'class-validator';
-import { EscalationEntityType, HEALTH_DUTY, IssueScope } from '@ecg-she/shared';
+import { EscalationEntityType, HEALTH_DUTY } from '@ecg-she/shared';
 
 @ValidatorConstraint({ name: 'dateNotBefore', async: false })
 class DateNotBeforeConstraint implements ValidatorConstraintInterface {

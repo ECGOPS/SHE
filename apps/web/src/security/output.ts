@@ -39,6 +39,13 @@ export function safeHttpUrl(value: string | null | undefined): string | undefine
   }
 }
 
+function hasUnsafePathChar(value: string): boolean {
+  for (const char of value) {
+    if (char === '\\' || char.charCodeAt(0) <= 0x1f) return true;
+  }
+  return false;
+}
+
 /**
  * An image address we are willing to put in src. Raster data URLs and
  * same-site paths only. SVG, HTML, and script URLs are dropped.
@@ -47,7 +54,7 @@ export function safeImageSrc(value: string | null | undefined): string | undefin
   if (!value) return undefined;
   const trimmed = value.trim();
   if (DATA_IMAGE.test(trimmed)) return trimmed;
-  if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !/[\u0000-\u001f\\]/.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//') && !hasUnsafePathChar(trimmed)) return trimmed;
   return undefined;
 }
 

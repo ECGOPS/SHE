@@ -129,7 +129,7 @@ export function NotificationsBell() {
             <Stack alignItems="center" justifyContent="center" sx={{ py: 4, px: 2 }}>
               <NotificationsNoneRoundedIcon color="disabled" sx={{ fontSize: 40, mb: 1 }} />
               <Typography variant="body2" color="text.secondary" textAlign="center">
-                You're all caught up — no notifications yet.
+                You&apos;re all caught up — no notifications yet.
               </Typography>
               <Typography variant="caption" color="text.secondary" textAlign="center" sx={{ mt: 0.5 }}>
                 New incidents, hazards and overdue actions will appear here in real time.

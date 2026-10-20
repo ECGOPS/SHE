@@ -133,10 +133,10 @@ export function PtwDetailPage() {
         <Alert severity="error">The holder has no current authorization for this permit.</Alert>
       )}
       {competence.data?.required && competence.data.state === 'EXPIRED' && (
-        <Alert severity="error">The holder's authorization expired{competence.data.expiresOn ? ` on ${competence.data.expiresOn}` : ''}.</Alert>
+        <Alert severity="error">The holder&apos;s authorization expired{competence.data.expiresOn ? ` on ${competence.data.expiresOn}` : ''}.</Alert>
       )}
       {competence.data?.required && competence.data.state === 'EXPIRING' && (
-        <Alert severity="warning">The holder's authorization expires{competence.data.expiresOn ? ` on ${competence.data.expiresOn}` : ''}.</Alert>
+        <Alert severity="warning">The holder&apos;s authorization expires{competence.data.expiresOn ? ` on ${competence.data.expiresOn}` : ''}.</Alert>
       )}
       {holderPpe.data?.required && (holderPpe.data.state === 'NONE' || holderPpe.data.state === 'EXPIRED' || holderPpe.data.state === 'TEST_DUE') && (
         <Alert severity="error">
