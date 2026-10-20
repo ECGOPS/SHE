@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { Box, Card, CardContent, Stack, Typography } from '@mui/material';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
@@ -8,7 +9,7 @@ interface Props {
   subtitle?: string;
   delta?: number;
   accent?: 'primary' | 'success' | 'warning' | 'error' | 'info';
-  icon?: JSX.Element;
+  icon?: ReactElement;
 }
 
 const ACCENT: Record<NonNullable<Props['accent']>, string> = {

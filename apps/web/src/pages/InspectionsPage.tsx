@@ -14,7 +14,7 @@ const cols: GridColDef[] = [
     headerName: 'Score %',
     width: 110,
     type: 'number',
-    valueFormatter: (value) => (typeof value === 'number' ? `${value.toFixed(1)}%` : ''),
+    valueFormatter: (value: unknown) => (typeof value === 'number' ? `${value.toFixed(1)}%` : ''),
   },
   dateCol('inspectedAt', 'Inspected at'),
 ];

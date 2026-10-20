@@ -121,7 +121,7 @@ export function JsaDetailPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['jsa', id],
-    queryFn: () => endpoints.jsaOne(id!) as Promise<JsaRecord>,
+    queryFn: () => endpoints.jsaOne(id!) as unknown as Promise<JsaRecord>,
     enabled: !!id,
   });
   const people = useQuery({ queryKey: ['jsa-people'], queryFn: endpoints.jsaPeople });

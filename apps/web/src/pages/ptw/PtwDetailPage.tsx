@@ -89,7 +89,7 @@ export function PtwDetailPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['ptw', id],
-    queryFn: () => endpoints.ptwOne(id!) as Promise<PermitRecord>,
+    queryFn: () => endpoints.ptwOne(id!) as unknown as Promise<PermitRecord>,
     enabled: !!id,
   });
   const duty = data?.holderId ? dutyForPermit(data.type) : null;

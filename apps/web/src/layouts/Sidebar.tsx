@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   Box,
@@ -34,7 +35,7 @@ import { canSeePath } from './nav-access';
 interface NavItem {
   to: string;
   label: string;
-  icon: JSX.Element;
+  icon: ReactElement;
 }
 
 const NAV: NavItem[] = [
