@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecg-she-web
+  namespace: ecg-she
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: ecg-she-web }
+  template:
+    metadata:
+      labels: { app: ecg-she-web }
+    spec:
+      containers:
+        - name: web
+          image: ghcr.io/ecg/ecg-she-web:latest
+          ports: [{ containerPort: 80 }]
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits:   { cpu: "500m", memory: "256Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecg-she-web
+  namespace: ecg-she
+spec:
+  selector: { app: ecg-she-web }
+  ports: [{ port: 80, targetPort: 80 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ecg-she-ingress
+  namespace: ecg-she
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [she.ecg.com.gh]
+      secretName: ecg-she-tls
+  rules:
+    - host: she.ecg.com.gh
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: ecg-she-api
+                port: { number: 80 }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ecg-she-web
+                port: { number: 80 }

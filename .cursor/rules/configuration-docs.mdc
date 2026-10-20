@@ -1,0 +1,52 @@
+---
+description: Keep docs/CONFIGURATION.md in sync whenever any configuration source changes
+globs: .env.example,.env,apps/api/src/config/config.schema.ts,apps/api/src/database/database.config.ts,apps/web/src/vite-env.d.ts,docker-compose.yml
+alwaysApply: false
+---
+
+# Configuration documentation must stay in sync
+
+`docs/CONFIGURATION.md` is the single source of truth for every environment
+variable and operational mode the ECG SHE platform supports. It is the file
+that operators, deployers and new contributors read first.
+
+## Whenever you edit any of these files
+
+- `.env.example`
+- `.env`
+- `apps/api/src/config/config.schema.ts`
+- `apps/api/src/database/database.config.ts`
+- `apps/web/src/vite-env.d.ts`
+- `docker-compose.yml` (when env passing changes)
+
+You **must** update `docs/CONFIGURATION.md` in the same change with:
+
+1. The variable in the appropriate table under section 3 (backend) or 4 (frontend).
+2. Its **default value** (mirror exactly what `config.schema.ts` declares).
+3. A one-line **purpose** description.
+4. If the change introduces / removes / renames an operational mode, update
+   section 2 (Operational modes) and the Quick Reference table at the top.
+5. Bump the **`Last reviewed`** date at the top of the document.
+6. Append a row to **section 8 — Change log** with a brief description.
+
+## Conventions
+
+- Group new variables under the existing section that matches their concern
+  (Database, Redis, Authentication, Entra ID, MFA & encryption, Storage,
+  Mail / push). If none fits, create a new sub-section in numerical order.
+- For secrets (JWT, encryption keys, Entra client secret, DB passwords),
+  always mark the default as **dev-only default** and add the reminder
+  *"Override in production"* to the Purpose column.
+- Cross-link from `README.md`, `docs/DATABASE.md`, and `docs/ENTRA_ID.md`
+  when adding a new mode or a major variable group.
+
+## Quick check before committing
+
+```bash
+# Variables present in the schema must also appear in the docs.
+rg "Joi\.(string|number|boolean)" apps/api/src/config/config.schema.ts \
+  | rg -o "[A-Z_][A-Z0-9_]+:" \
+  | sort -u
+rg "^\| \`[A-Z_]" docs/CONFIGURATION.md | sort -u
+# Diff the two outputs — they should be identical (minus the schema header).
+```

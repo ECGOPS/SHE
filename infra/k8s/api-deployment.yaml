@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ecg-she-api
+  namespace: ecg-she
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: ecg-she-api
+  template:
+    metadata:
+      labels:
+        app: ecg-she-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/ecg/ecg-she-api:latest
+          ports:
+            - containerPort: 4000
+          envFrom:
+            - secretRef:
+                name: ecg-she-api-secrets
+          readinessProbe:
+            httpGet: { path: /api/v1/dashboard/kpis, port: 4000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /api/v1/docs, port: 4000 }
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests: { cpu: "250m", memory: "512Mi" }
+            limits:   { cpu: "1500m", memory: "1Gi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ecg-she-api
+  namespace: ecg-she
+spec:
+  selector: { app: ecg-she-api }
+  ports:
+    - port: 80
+      targetPort: 4000
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ecg-she-api
+  namespace: ecg-she
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ecg-she-api
+  minReplicas: 3
+  maxReplicas: 12
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 65 }

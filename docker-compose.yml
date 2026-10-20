@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: ecg-she-postgres
+    restart: unless-stopped
+    profiles: ["pg", "default"]
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-ecg_she}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ecg_she_dev}
+      POSTGRES_DB: ${DB_NAME:-ecg_she}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-ecg_she} -d ${DB_NAME:-ecg_she}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Local SQL Server / Azure SQL Edge — for testing the mssql driver locally.
+  # Activate with:   docker compose --profile mssql up -d mssql
+  mssql:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: ecg-she-mssql
+    restart: unless-stopped
+    profiles: ["mssql"]
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD:-Ecg_She_Dev_2026!}
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+
+  redis:
+    image: redis:7-alpine
+    container_name: ecg-she-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: ecg-she-api
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DB_HOST:-postgres}
+      REDIS_HOST: redis
+    ports:
+      - "4000:4000"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: ecg-she-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+volumes:
+  pg_data:
+  mssql_data:
+  redis_data:
