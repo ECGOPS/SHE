@@ -20,7 +20,7 @@ async function bootstrap(): Promise<void> {
 
   app.setGlobalPrefix(prefix);
   app.enableCors({
-    origin: (origin, callback) => {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
       callback(null, allowsBrowserOrigin(origin));
     },
     credentials: true,

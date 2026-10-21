@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import type { StringValue } from 'ms';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
 import * as crypto from 'crypto';
@@ -208,7 +209,7 @@ export class SessionService {
     };
     const accessToken = await this.jwt.signAsync(claims, {
       secret: this.config.getOrThrow<string>('JWT_ACCESS_SECRET'),
-      expiresIn: accessTtl,
+      expiresIn: accessTtl as StringValue,
     });
     return {
       accessToken,
