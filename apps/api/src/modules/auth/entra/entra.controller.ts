@@ -17,6 +17,7 @@ import {
   refreshCookiePath,
   setRefreshCookie,
 } from '../refresh-cookie';
+import { cookieFlagsFromEnv } from '../cookie-flags';
 import { SessionService } from '../session.service';
 
 interface IdTokenClaims {
@@ -154,10 +155,10 @@ export class EntraController {
     });
   }
 
-  private cookieFlags(): { secure: boolean; path: string } {
-    return {
-      secure: this.config.get<string>('NODE_ENV') === 'production',
-      path: refreshCookiePath(this.config.get<string>('API_PREFIX', 'api/v1')),
-    };
+  private cookieFlags(): { secure: boolean; path: string; sameSite: 'lax' | 'none' } {
+    return cookieFlagsFromEnv(
+      this.config,
+      refreshCookiePath(this.config.get<string>('API_PREFIX', 'api/v1')),
+    );
   }
 }

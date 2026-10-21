@@ -19,23 +19,27 @@ export interface RefreshCookieOptions {
   secure: boolean;
   path: string;
   maxAgeMs: number;
+  sameSite?: 'lax' | 'none';
 }
 
 export function setRefreshCookie(res: Response, token: string, opts: RefreshCookieOptions): void {
   res.cookie(REFRESH_COOKIE, token, {
     httpOnly: true,
     secure: opts.secure,
-    sameSite: 'lax',
+    sameSite: opts.sameSite ?? 'lax',
     path: opts.path,
     maxAge: opts.maxAgeMs,
   });
 }
 
-export function clearRefreshCookie(res: Response, opts: Pick<RefreshCookieOptions, 'secure' | 'path'>): void {
+export function clearRefreshCookie(
+  res: Response,
+  opts: Pick<RefreshCookieOptions, 'secure' | 'path' | 'sameSite'>,
+): void {
   res.clearCookie(REFRESH_COOKIE, {
     httpOnly: true,
     secure: opts.secure,
-    sameSite: 'lax',
+    sameSite: opts.sameSite ?? 'lax',
     path: opts.path,
   });
 }

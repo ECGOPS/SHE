@@ -17,6 +17,7 @@ import {
   type RefreshCookieOptions,
 } from './refresh-cookie';
 import { clearCsrfCookie, newCsrfToken, setCsrfCookie } from './csrf';
+import { cookieFlagsFromEnv } from './cookie-flags';
 import { ABSOLUTE_MS_DEFAULT, durationMs } from './session-policy';
 import { SessionService } from './session.service';
 
@@ -28,6 +29,12 @@ export class AuthController {
     private readonly sessions: SessionService,
     private readonly config: ConfigService,
   ) {}
+
+  @Public()
+  @Get('ready')
+  ready(): { ok: true } {
+    return { ok: true };
+  }
 
   @Public()
   @Get('csrf')
@@ -188,16 +195,12 @@ export class AuthController {
     return durationMs(this.config.get<string>('SESSION_ABSOLUTE'), ABSOLUTE_MS_DEFAULT);
   }
 
-  private csrfOptions(): { secure: boolean; path: string } {
+  private csrfOptions(): { secure: boolean; path: string; sameSite: 'lax' | 'none' } {
     const prefix = this.config.get<string>('API_PREFIX', 'api/v1').replace(/^\/+|\/+$/g, '');
-    return { secure: this.config.get<string>('NODE_ENV') === 'production', path: `/${prefix}` };
+    return cookieFlagsFromEnv(this.config, `/${prefix}`);
   }
 
-  private cookieOptions(): Pick<RefreshCookieOptions, 'secure' | 'path'> {
-    const prefix = this.config.get<string>('API_PREFIX', 'api/v1');
-    return {
-      secure: this.config.get<string>('NODE_ENV') === 'production',
-      path: refreshCookiePath(prefix),
-    };
+  private cookieOptions(): Pick<RefreshCookieOptions, 'secure' | 'path' | 'sameSite'> {
+    return cookieFlagsFromEnv(this.config, refreshCookiePath(this.config.get<string>('API_PREFIX', 'api/v1')));
   }
 }

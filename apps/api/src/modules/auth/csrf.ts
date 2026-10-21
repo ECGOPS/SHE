@@ -11,23 +11,26 @@ export function newCsrfToken(): string {
 export function setCsrfCookie(
   res: Response,
   token: string,
-  opts: { secure: boolean; path: string; maxAgeMs: number },
+  opts: { secure: boolean; path: string; maxAgeMs: number; sameSite?: 'lax' | 'none' },
 ): void {
   res.cookie(CSRF_COOKIE, token, {
     httpOnly: true,
     secure: opts.secure,
-    sameSite: 'lax',
+    sameSite: opts.sameSite ?? 'lax',
     path: opts.path,
     maxAge: opts.maxAgeMs,
   });
   res.setHeader('X-CSRF-Token', token);
 }
 
-export function clearCsrfCookie(res: Response, opts: { secure: boolean; path: string }): void {
+export function clearCsrfCookie(
+  res: Response,
+  opts: { secure: boolean; path: string; sameSite?: 'lax' | 'none' },
+): void {
   res.clearCookie(CSRF_COOKIE, {
     httpOnly: true,
     secure: opts.secure,
-    sameSite: 'lax',
+    sameSite: opts.sameSite ?? 'lax',
     path: opts.path,
   });
 }

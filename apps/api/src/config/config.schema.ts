@@ -27,8 +27,11 @@ export const configValidationSchema = Joi.object({
     .default('development'),
 
   API_PORT: Joi.number().default(4000),
+  PORT: Joi.number().optional(),
   API_PREFIX: Joi.string().default('api/v1'),
   CORS_ORIGIN: Joi.string().default('http://localhost:5173'),
+  COOKIE_SAMESITE: Joi.string().valid('lax', 'none').default('lax'),
+  COOKIE_SECURE: Joi.string().valid('true', 'false').optional(),
   // Swagger is mounted in development. Production stays closed unless this is true.
   SWAGGER_ENABLED: Joi.boolean().default(false),
 

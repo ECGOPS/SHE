@@ -15,7 +15,7 @@ async function bootstrap(): Promise<void> {
   const config = app.get(ConfigService);
   const logger = new Logger('Bootstrap');
 
-  const port = config.get<number>('API_PORT', 4000);
+  const port = Number(process.env.PORT ?? config.get<number>('API_PORT', 4000));
   const prefix = config.get<string>('API_PREFIX', 'api/v1');
 
   app.setGlobalPrefix(prefix);
@@ -118,7 +118,7 @@ async function bootstrap(): Promise<void> {
  */
 async function listenWithRetry(
   // Loose-typed so we don't have to import the heavy NestApplication type here.
-  app: { listen: (port: number) => Promise<unknown> },
+  app: { listen: (port: number, host?: string) => Promise<unknown> },
   port: number,
   logger: Logger,
   maxAttempts = 8,
@@ -126,7 +126,7 @@ async function listenWithRetry(
 ): Promise<void> {
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      await app.listen(port);
+      await app.listen(port, '0.0.0.0');
       return;
     } catch (err) {
       const code = (err as NodeJS.ErrnoException)?.code;

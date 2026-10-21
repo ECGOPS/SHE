@@ -1,0 +1,31 @@
+# Temporary Render API for testing the Netlify frontend.
+# This is not the ECG production host. Delete the service when the test is over.
+services:
+  - type: web
+    name: ecg-she-api
+    runtime: docker
+    dockerfilePath: apps/api/Dockerfile
+    healthCheckPath: /api/v1/auth/ready
+    envVars:
+      - key: NODE_ENV
+        value: development
+      - key: BOOTSTRAP_AUTOSEED
+        value: 'true'
+      - key: DB_TYPE
+        value: sqlite
+      - key: AUTH_PROVIDER
+        value: local
+      - key: REDIS_ENABLED
+        value: 'false'
+      - key: COOKIE_SAMESITE
+        value: none
+      - key: COOKIE_SECURE
+        value: 'true'
+      - key: CORS_ORIGIN
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: DATA_ENCRYPTION_KEY
+        generateValue: true
