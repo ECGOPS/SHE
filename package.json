@@ -32,9 +32,11 @@
     "@nestjs/cli": {
       "glob": "10.5.0"
     },
-    "tar": "$tar"
+    "tar": "$tar",
+    "multer": "$multer"
   },
   "dependencies": {
-    "lodash": "4.18.1"
+    "lodash": "4.18.1",
+    "multer": "2.4.0"
   }
 }
