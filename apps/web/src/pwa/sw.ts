@@ -13,7 +13,7 @@ precacheAndRoute(self.__WB_MANIFEST);
 
 // Map tiles
 registerRoute(
-  ({ url }) => url.hostname.includes('tile.openstreetmap.org'),
+  ({ url }) => url.hostname === 'tile.openstreetmap.org',
   new CacheFirst({
     cacheName: 'osm-tiles',
     plugins: [
