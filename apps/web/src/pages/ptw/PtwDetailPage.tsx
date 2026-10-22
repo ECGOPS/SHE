@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Card, CardContent, Chip, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material';
 import { Permission, dutyForPermit, ppeForPermit } from '@ecg-she/shared';
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Button, Card, CardContent, Checkbox, Chip, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { Permission, ROOT_CAUSE_METHOD } from '@ecg-she/shared';
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
 import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';

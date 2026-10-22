@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Dialog, DialogContent, FormControlLabel, Grid2 as Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Checkbox, Dialog, DialogContent, FormControlLabel, Grid2 as Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { ENVIRONMENTAL_ASPECT, ENVIRONMENTAL_IMPACT, Permission, RISK_SEVERITY } from '@ecg-she/shared';
 import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
 import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
