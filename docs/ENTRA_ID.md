@@ -37,6 +37,7 @@ Create (or re-use) four security groups in Entra and copy their **object ids**:
 | ---------------------- | -------------- |
 | ECG-SHE-SysAdmin       | `SYS_ADMIN`    |
 | ECG-SHE-Global         | `GLOBAL_USER`  |
+| ECG-SHE-HeadOfficeSHE  | `HEAD_OFFICE_SHE` |
 | ECG-SHE-Regional       | `REGIONAL_USER`|
 | ECG-SHE-District       | `DISTRICT_USER`|
 

@@ -3,9 +3,22 @@ import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Box, Button, Card, CardContent, Checkbox, Chip, Dialog, DialogContent, FormControlLabel, Grid2 as Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { ENVIRONMENTAL_ASPECT, ENVIRONMENTAL_IMPACT, Permission, RISK_SEVERITY } from '@ecg-she/shared';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import ScienceOutlinedIcon from '@mui/icons-material/ScienceOutlined';
 import { endpoints } from '../../api/endpoints';
 import { imageSrcFromBlob, isRasterImageType } from '../../security/output';
 import { ExportReportButton } from '../../components/ExportReportButton';
+import {
+  CASE_FILE_CARD_SX,
+  CaseFileCard,
+  CaseFileHeader,
+  CaseFileSkeleton,
+  formatWhen,
+  placeName,
+  titleCase,
+} from '../../components/case-file';
 import { useAuthStore } from '../../stores/auth.store';
 
 interface EnvEvent {
@@ -105,7 +118,7 @@ export function EnvironmentalDetailPage() {
   };
   const run = (fn: () => Promise<unknown>) => fn().then(refresh).catch((err: unknown) => setError(errorMessage(err)));
 
-  if (record.isLoading) return <Typography>Loading the event…</Typography>;
+  if (record.isLoading) return <CaseFileSkeleton />;
   if (!event) return <Alert severity="error">Environmental event not found</Alert>;
 
   const closed = event.status === 'CLOSED';
@@ -150,32 +163,40 @@ export function EnvironmentalDetailPage() {
   };
 
   return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={1}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-          <Typography variant="h5" fontWeight={700}>{event.referenceCode ?? 'Environmental event'}</Typography>
-          <Chip label={event.status ?? ''} color={closed ? 'success' : event.status === 'CONTAINED' ? 'warning' : 'default'} />
-        </Stack>
-        <ExportReportButton filename={`${event.referenceCode ?? 'environmental'}-report.pdf`} download={() => endpoints.envReport(id)} />
-      </Stack>
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/environmental"
+        backLabel="Environmental"
+        reference={event.referenceCode ?? 'Environmental event'}
+        title={event.title || 'Environmental event'}
+        chips={[
+          { label: titleCase(event.status), color: closed ? 'success' : event.status === 'CONTAINED' ? 'warning' : 'default' },
+          { label: titleCase(event.type), variant: 'outlined' },
+          ...(event.regulatoryReportable ? [{ label: 'Reportable', color: 'error' as const, variant: 'outlined' as const }] : []),
+        ]}
+        actions={<ExportReportButton filename={`${event.referenceCode ?? 'environmental'}-report.pdf`} download={() => endpoints.envReport(id)} />}
+        meta={[
+          { icon: <EventOutlinedIcon fontSize="small" />, label: 'Occurred', value: formatWhen(event.occurredAt) },
+          { icon: <PlaceOutlinedIcon fontSize="small" />, label: 'Location', value: event.locationName || placeName(event.region, event.district) },
+          { icon: <PersonOutlineRoundedIcon fontSize="small" />, label: 'Reported by', value: event.reportedBy?.fullName ?? '—' },
+          { icon: <ScienceOutlinedIcon fontSize="small" />, label: 'Substance', value: titleCase(event.substance) === '—' ? 'Not named' : titleCase(event.substance) },
+        ]}
+      />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>{event.title}</Typography>
-          <Typography variant="body2" mt={1}>{event.description}</Typography>
-          <Typography variant="body2" mt={1}>Type: {String(event.type ?? '').replaceAll('_', ' ')}</Typography>
-          <Typography variant="body2">Substance: {event.substance?.replaceAll('_', ' ') || 'Not named'}</Typography>
-          <Typography variant="body2">Place: {event.locationName || 'Not named'}</Typography>
-          <Typography variant="body2">Reported by: {event.reportedBy?.fullName ?? '—'}</Typography>
-          {event.estimatedQuantity != null && (
-            <Typography variant="body2">Quantity: {event.estimatedQuantity} {event.quantityUnit ?? ''}</Typography>
-          )}
-        </CardContent>
-      </Card>
+      <CaseFileCard title="What happened">
+        <Typography sx={{ mt: 1.5, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+          {event.description || 'No description was recorded.'}
+        </Typography>
+        {event.estimatedQuantity != null && (
+          <Typography variant="body2" color="text.secondary" mt={2}>
+            Quantity: {event.estimatedQuantity} {event.quantityUnit ?? ''}
+          </Typography>
+        )}
+      </CaseFileCard>
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Containment</Typography>
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Containment</Typography>
           {closed ? (
             <Typography variant="body2" mt={1}>{event.containmentActions || 'Not recorded'}</Typography>
           ) : canReport && (
@@ -188,9 +209,9 @@ export function EnvironmentalDetailPage() {
       </Card>
 
       {material && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" fontWeight={700}>Waste leaving the site</Typography>
+        <Card sx={CASE_FILE_CARD_SX}>
+          <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Waste leaving the site</Typography>
             <Typography variant="body2" color="text.secondary">The event stays open until the contaminated material has a contractor, a disposal site, and a waybill.</Typography>
             {closed ? (
               <Typography variant="body2" mt={1}>{event.wasteContractor} · {event.disposalSite} · {event.waybillNumber}</Typography>
@@ -211,9 +232,9 @@ export function EnvironmentalDetailPage() {
 
       <Photos eventId={event.id} photos={event.attachments ?? []} canAdd={!closed && canReport} onAdded={refresh} />
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Impact</Typography>
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Impact</Typography>
           <Typography variant="body2" color="text.secondary">The aspect is what was released. The impact is the harm. A major or catastrophic release needs a corrective action.</Typography>
           {!closed && canClose ? (
             <Stack spacing={1} mt={2} component="form" onSubmit={onAssess}>
@@ -248,9 +269,9 @@ export function EnvironmentalDetailPage() {
       </Card>
 
       {(significant || actions.length > 0) && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" fontWeight={700}>Corrective action</Typography>
+        <Card sx={CASE_FILE_CARD_SX}>
+          <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Corrective action</Typography>
             {actions.map((action) => (
               <Stack key={String(action.id)} direction="row" spacing={1} alignItems="center" mt={1}>
                 <Typography variant="body2">{String(action.title ?? 'Action')} — {String(action.status ?? '').replaceAll('_', ' ')}</Typography>
@@ -333,9 +354,9 @@ function Photos({
     }
   };
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" fontWeight={700}>Photos</Typography>
+    <Card sx={CASE_FILE_CARD_SX}>
+      <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+        <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Photos</Typography>
         <Typography variant="body2" color="text.secondary">Photograph the release and the ground after it is cleaned.</Typography>
         {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
         <Grid container spacing={2} mt={0.5}>

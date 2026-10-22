@@ -60,6 +60,11 @@ export function ManagementSystemPage() {
   const [dueOn, setDueOn] = useState('');
   const [complianceResult, setComplianceResult] = useState('NOT_EVALUATED');
   const [significant, setSignificant] = useState('false');
+  const [issueOrigin, setIssueOrigin] = useState('INTERNAL');
+  const [documentVersion, setDocumentVersion] = useState('1.0');
+  const [documentStatus, setDocumentStatus] = useState('DRAFT');
+  const [audience, setAudience] = useState('');
+  const [frequency, setFrequency] = useState('');
 
   const regions = useQuery({ queryKey: ['regions'], queryFn: endpoints.regions, enabled: open });
   const districts = useQuery({
@@ -76,7 +81,7 @@ export function ManagementSystemPage() {
   const canAdd = (itemKind: string) => {
     if (itemKind === 'CONSULTATION') return true;
     if (!canManage) return false;
-    if (itemKind === 'POLICY' || itemKind === 'SCOPE') return global;
+    if (itemKind === 'POLICY' || itemKind === 'SCOPE' || itemKind === 'CONTEXT') return global;
     if (itemKind === 'REVIEW') return !districtOfficer;
     return true;
   };
@@ -99,6 +104,11 @@ export function ManagementSystemPage() {
       dueOn: dueOn || undefined,
       complianceResult: kind === 'OBLIGATION' ? complianceResult : undefined,
       significant: kind === 'ASPECT' ? significant === 'true' : undefined,
+      issueOrigin: kind === 'CONTEXT' ? issueOrigin : undefined,
+      documentVersion: kind === 'DOCUMENT' ? documentVersion.trim() || undefined : undefined,
+      documentStatus: kind === 'DOCUMENT' ? documentStatus : undefined,
+      audience: kind === 'COMMUNICATION' ? audience.trim() || undefined : undefined,
+      frequency: kind === 'COMMUNICATION' || kind === 'MONITORING' ? frequency.trim() || undefined : undefined,
     }),
     onSuccess: () => {
       setOpen(false);
@@ -106,6 +116,8 @@ export function ManagementSystemPage() {
       setDescription('');
       setOwnerName('');
       setDueOn('');
+      setAudience('');
+      setFrequency('');
       setError(null);
       refresh();
     },
@@ -128,7 +140,7 @@ export function ManagementSystemPage() {
       <Box>
         <Typography variant="h5" fontWeight={700}>Management system</Typography>
         <Typography color="text.secondary">
-          ISO 45001 and ISO 14001. The registers below are the records this system did not already keep. Each one stays open until it is filled in.
+          ISO 45001 and ISO 14001. Add ECG’s real policy, legal, document, communication and monitoring records here. Nothing is pre-filled.
         </Typography>
       </Box>
       {summary.isError && <Alert severity="error">The management system could not be loaded.</Alert>}
@@ -169,13 +181,30 @@ export function ManagementSystemPage() {
                     {row.ownerName ? ` · ${String(row.ownerName)}` : ''}
                     {row.complianceResult ? ` · ${String(row.complianceResult)}` : ''}
                     {row.kind === 'ASPECT' ? ` · ${row.significant ? 'Significant' : 'Not significant'}` : ''}
+                    {row.issueOrigin ? ` · ${String(row.issueOrigin)}` : ''}
+                    {row.documentVersion ? ` · v${String(row.documentVersion)}` : ''}
+                    {row.documentStatus ? ` · ${String(row.documentStatus)}` : ''}
+                    {row.audience ? ` · ${String(row.audience)}` : ''}
+                    {row.frequency ? ` · ${String(row.frequency)}` : ''}
                   </Typography>
                 </Box>
-                {canManage && row.status === 'OPEN' && (
-                  <Button size="small" variant="outlined" disabled={closeRecord.isPending} onClick={() => closeRecord.mutate(String(row.id))}>
-                    Close
-                  </Button>
-                )}
+                <Stack direction="row" spacing={1} alignItems="center">
+                  {canManage && row.kind === 'DOCUMENT' && row.documentStatus === 'DRAFT' && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disabled={closeRecord.isPending}
+                      onClick={() => endpoints.updateManagementRecord(String(row.id), { documentStatus: 'CURRENT' }).then(refresh)}
+                    >
+                      Issue as current
+                    </Button>
+                  )}
+                  {canManage && row.status === 'OPEN' && (
+                    <Button size="small" variant="outlined" disabled={closeRecord.isPending} onClick={() => closeRecord.mutate(String(row.id))}>
+                      Close
+                    </Button>
+                  )}
+                </Stack>
               </Stack>
             </CardContent>
           </Card>
@@ -214,7 +243,47 @@ export function ManagementSystemPage() {
                 <MenuItem value="">Whole region</MenuItem>
                 {(districts.data ?? []).map((district) => <MenuItem key={district.id} value={district.id}>{district.name}</MenuItem>)}
               </TextField>
-              <TextField label={kind === 'REVIEW' || kind === 'EMERGENCY' ? 'Date held or tested' : 'Due date'} type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} InputLabelProps={{ shrink: true }} required={kind === 'OBJECTIVE' || kind === 'EMERGENCY' || kind === 'REVIEW'} />
+              <TextField
+                label={
+                  kind === 'REVIEW' || kind === 'EMERGENCY'
+                    ? 'Date held or tested'
+                    : kind === 'DOCUMENT'
+                      ? 'Review by'
+                      : kind === 'MONITORING'
+                        ? 'Next measurement'
+                        : 'Due date'
+                }
+                type="date"
+                value={dueOn}
+                onChange={(e) => setDueOn(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                required={kind === 'OBJECTIVE' || kind === 'EMERGENCY' || kind === 'REVIEW' || kind === 'DOCUMENT' || kind === 'MONITORING'}
+              />
+              {kind === 'CONTEXT' && (
+                <TextField select label="Origin" value={issueOrigin} onChange={(e) => setIssueOrigin(e.target.value)} required>
+                  <MenuItem value="INTERNAL">Internal</MenuItem>
+                  <MenuItem value="EXTERNAL">External</MenuItem>
+                </TextField>
+              )}
+              {kind === 'DOCUMENT' && (
+                <>
+                  <TextField label="Version" value={documentVersion} onChange={(e) => setDocumentVersion(e.target.value)} required />
+                  <TextField select label="Document status" value={documentStatus} onChange={(e) => setDocumentStatus(e.target.value)} required>
+                    <MenuItem value="DRAFT">Draft</MenuItem>
+                    <MenuItem value="CURRENT">Current</MenuItem>
+                    <MenuItem value="SUPERSEDED">Superseded</MenuItem>
+                  </TextField>
+                </>
+              )}
+              {kind === 'COMMUNICATION' && (
+                <>
+                  <TextField label="Audience" value={audience} onChange={(e) => setAudience(e.target.value)} required />
+                  <TextField label="How often" value={frequency} onChange={(e) => setFrequency(e.target.value)} required />
+                </>
+              )}
+              {kind === 'MONITORING' && (
+                <TextField label="How often / method" value={frequency} onChange={(e) => setFrequency(e.target.value)} required />
+              )}
               {kind === 'OBLIGATION' && (
                 <TextField select label="Does ECG meet it?" value={complianceResult} onChange={(e) => setComplianceResult(e.target.value)} required>
                   {COMPLIANCE.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}

@@ -11,10 +11,13 @@ import {
   isDistrictScope,
   isGlobalScope,
   reportsInChosenPlace,
+  HEAD_OFFICE_OFFICER_ROLES,
+  issueScopeForPlace,
   issueScopeForRole,
   PaginatedResult,
   Permission,
   Role,
+  SAFETY_OFFICER_ROLES,
 } from '@ecg-she/shared';
 import { Incident } from './entities/incident.entity';
 import { Witness } from './entities/witness.entity';
@@ -59,6 +62,7 @@ export class IncidentsService {
       districtId: incidentDto.districtId ?? user.districtId,
     });
     if (!scoped.regionId) throw new BadRequestException('regionId is required');
+    this.assertImmediateResponse(dto);
 
     if (dto.offlineClientId) {
       const existing = await this.incidents.findOne({ where: { offlineClientId: dto.offlineClientId } });
@@ -72,11 +76,9 @@ export class IncidentsService {
 
     const referenceCode = await this.generateReferenceCode(region.code, districtCode);
 
-    // Initial escalation tier mirrors the reporter's seat on the org chart:
-    //   • District officer's report  → DISTRICT
-    //   • Regional officer's report  → REGIONAL
-    //   • Global / sys-admin report  → HEAD_OFFICE
-    const initialScope = issueScopeForRole(user.role);
+    // The case starts at the place on the report: a district report opens at
+    // district even when a regional officer files it. Region-only → regional.
+    const initialScope = issueScopeForPlace(scoped);
 
     const entity = this.incidents.create({
       ...incidentDto,
@@ -287,6 +289,7 @@ export class IncidentsService {
       .leftJoinAndSelect('i.district', 'd')
       .leftJoinAndSelect('i.reportedBy', 'rb')
       .leftJoinAndSelect('i.investigator', 'inv')
+      .leftJoinAndSelect('i.managementReportSubmittedBy', 'msb')
       .leftJoinAndSelect('i.witnesses', 'w')
       .leftJoinAndSelect('i.findings', 'f')
       .leftJoinAndSelect('i.attachments', 'a')
@@ -354,11 +357,11 @@ export class IncidentsService {
       .select(['u.id', 'u.fullName', 'u.role'])
       .where('u.active = :active', { active: true })
       .andWhere('u.role IN (:...officerRoles)', {
-        officerRoles: [Role.DISTRICT_SAFETY_OFFICER, Role.REGIONAL_SAFETY_OFFICER, Role.GLOBAL_SAFETY_OFFICER],
+        officerRoles: SAFETY_OFFICER_ROLES,
       })
       .andWhere(
-        '(u.role = :globalOfficer OR u.regionId = :regionId)',
-        { globalOfficer: Role.GLOBAL_SAFETY_OFFICER, regionId: incident.regionId },
+        '(u.role IN (:...globalOfficers) OR u.regionId = :regionId)',
+        { globalOfficers: HEAD_OFFICE_OFFICER_ROLES, regionId: incident.regionId },
       )
       .orderBy('u.fullName', 'ASC');
     if (isDistrictScope(user.role) && incident.districtId) {
@@ -429,17 +432,37 @@ export class IncidentsService {
   }
 
   async submitForApproval(user: AuthUser, id: string): Promise<Incident> {
+    this.assertCanRecord(user);
     const incident = await this.get(user, id);
     this.assertOpen(incident);
-    incident.status = IncidentStatus.PENDING_APPROVAL;
-    const saved = await this.incidents.save(incident);
+    if (!incident.investigatorId) {
+      throw new BadRequestException('Assign an investigator before submitting to management');
+    }
+    const findings = incident.findings ?? [];
+    if (!findings.length) {
+      throw new BadRequestException('Record at least one finding before submitting to management');
+    }
+    if (!findings.some((finding) => finding.category === 'ROOT')) {
+      throw new BadRequestException('Record the root cause before submitting to management');
+    }
+    const capaCount = await this.actions.count({ where: { sourceType: 'INCIDENT', sourceId: id } });
+    if (!capaCount) {
+      throw new BadRequestException('Raise at least one corrective action before submitting to management');
+    }
+    await this.incidents.update(incident.id, {
+      status: IncidentStatus.PENDING_APPROVAL,
+      managementReportSubmittedAt: new Date(),
+      managementReportSubmittedById: user.id,
+      updatedBy: user.id,
+    });
+    const saved = await this.get(user, id);
     this.realtime.emitToScope(saved.regionId, saved.districtId ?? undefined, 'incident:pending-approval', {
       id: saved.id,
     });
     void this.notifications.broadcastToScope({
       topic: 'incident.pending-approval',
-      title: `Incident awaiting approval · ${saved.referenceCode}`,
-      body: `${saved.title} is ready for sign-off.`,
+      title: `Incident awaiting management · ${saved.referenceCode}`,
+      body: `${saved.title} has been submitted to management for sign-off.`,
       regionId: saved.regionId,
       districtId: saved.districtId ?? null,
       payload: { incidentId: saved.id, route: `/incidents/${saved.id}` },
@@ -518,6 +541,21 @@ export class IncidentsService {
       .getOne();
     const next = last ? Number(last.referenceCode.slice(prefix.length)) + 1 : 1;
     return `${prefix}${String(next).padStart(5, '0')}`;
+  }
+
+  private assertImmediateResponse(dto: CreateIncidentDto): void {
+    if (dto.areaSecured !== true) {
+      throw new BadRequestException('Confirm the area was secured before filing this report');
+    }
+    if (dto.supervisorInformed !== true) {
+      throw new BadRequestException('Confirm the supervisor or safety officer was informed');
+    }
+    if (!dto.firstAidOutcome) {
+      throw new BadRequestException('Record whether first aid was given');
+    }
+    if (dto.emergencyServicesContacted && !dto.emergencyServicesDetails?.trim()) {
+      throw new BadRequestException('Record which emergency service was contacted');
+    }
   }
 
   private assertCanRecord(user: AuthUser): void {

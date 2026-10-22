@@ -203,7 +203,7 @@ empty disables SSO (and the "Sign in with Microsoft" button on the SPA).
 | `ENTRA_REDIRECT_URI` | `http://localhost:5173/auth/callback` | OAuth redirect — must match the app registration. |
 | `ENTRA_POST_LOGOUT_URI` | `http://localhost:5173/login` | Where Entra returns the user after sign-out. |
 | `ENTRA_GROUP_CLAIM` | `groups` | JWT claim that contains group memberships. |
-| `ENTRA_GROUP_ROLE_MAP` | empty | Comma-separated `<group-guid>:<ROLE>` pairs. Roles: `SYS_ADMIN`, `GLOBAL_USER`, `REGIONAL_USER`, `DISTRICT_USER`. |
+| `ENTRA_GROUP_ROLE_MAP` | empty | Comma-separated `<group-guid>:<ROLE>` pairs. Roles: `SYS_ADMIN`, `GLOBAL_USER`, `GLOBAL_SAFETY_OFFICER`, `HEAD_OFFICE_SHE`, `REGIONAL_USER`, `DISTRICT_USER`. |
 | `ENTRA_AUTO_SYNC` | `false` | Enable hourly Microsoft Graph user-provisioning cron. |
 
 ### 3.6 MFA & encryption

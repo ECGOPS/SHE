@@ -12,19 +12,47 @@ import {
   Dialog,
   FormControlLabel,
   DialogContent,
-  Divider,
   Grid2 as Grid,
   MenuItem,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
-import { EscalationEntityType, IssueScope, Permission, ROLE_LABEL, Role, SEVERITY_POTENTIAL } from '@ecg-she/shared';
+import { EscalationEntityType, ISSUE_SCOPE_LABEL, IssueScope, Permission, ROLE_LABEL, Role, SEVERITY_POTENTIAL } from '@ecg-she/shared';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
 import { endpoints, NearMissDto } from '../../api/endpoints';
 import { imageSrcFromBlob } from '../../security/output';
 import { ExportReportButton } from '../../components/ExportReportButton';
 import { EscalationPanel } from '../../components/EscalationPanel';
+import {
+  CASE_FILE_CARD_SX,
+  CaseFileCard,
+  CaseFileHeader,
+  CaseFileSkeleton,
+  formatWhen,
+  placeName,
+  titleCase,
+} from '../../components/case-file';
 import { useAuthStore } from '../../stores/auth.store';
+
+const SEV_COLOR: Record<string, 'default' | 'warning' | 'error' | 'success'> = {
+  NEGLIGIBLE: 'success',
+  MINOR: 'success',
+  MODERATE: 'warning',
+  MAJOR: 'error',
+  CATASTROPHIC: 'error',
+};
+
+const STATUS_COLOR: Record<string, 'default' | 'info' | 'warning' | 'success' | 'error'> = {
+  DRAFT: 'default',
+  REPORTED: 'info',
+  UNDER_INVESTIGATION: 'warning',
+  CLOSED: 'success',
+  CONVERTED: 'info',
+};
 
 function errorMessage(err: unknown): string {
   return (
@@ -42,56 +70,51 @@ export function NearMissDetailPage() {
     enabled: !!id,
   });
 
-  if (isLoading || !data) return <Typography>Loading...</Typography>;
+  if (isLoading || !data) return <CaseFileSkeleton />;
+
+  const scope = ISSUE_SCOPE_LABEL[data.currentScope ?? IssueScope.DISTRICT];
+  const reporter = data.anonymous
+    ? data.reportedBy?.fullName
+      ? `Confidential · ${data.reportedBy.fullName}`
+      : 'Confidential'
+    : data.reportedBy?.fullName ?? '—';
 
   return (
-    <Stack spacing={3}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={1}>
-        <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
-          <Typography variant="h5" fontWeight={700}>{data.referenceCode}</Typography>
-          <Chip
-            label={data.status.replaceAll('_', ' ')}
-            color={data.status === 'CLOSED' ? 'success' : data.status === 'CONVERTED' ? 'info' : 'warning'}
-          />
-          <Chip label={(data.severityPotential ?? 'Unrated').replaceAll('_', ' ')} variant="outlined" />
-          <Chip label={data.category.replaceAll('_', ' ')} variant="outlined" />
-        </Stack>
-        <ExportReportButton filename={`${data.referenceCode}-report.pdf`} download={() => endpoints.nearMissReport(id!)} />
-      </Stack>
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/near-miss"
+        backLabel="Near miss"
+        reference={data.referenceCode}
+        title={data.title}
+        chips={[
+          { label: titleCase(data.status), color: STATUS_COLOR[data.status] ?? 'warning' },
+          {
+            label: titleCase(data.severityPotential) === '—' ? 'Unrated' : titleCase(data.severityPotential),
+            color: SEV_COLOR[data.severityPotential ?? ''] ?? 'default',
+            variant: data.severityPotential ? 'filled' : 'outlined',
+          },
+          { label: titleCase(data.category), variant: 'outlined' },
+          { label: data.resolvedAt ? `Resolved at ${scope}` : `Open at ${scope}`, variant: 'outlined' },
+        ]}
+        actions={<ExportReportButton filename={`${data.referenceCode}-report.pdf`} download={() => endpoints.nearMissReport(id!)} />}
+        meta={[
+          { icon: <EventOutlinedIcon fontSize="small" />, label: 'Occurred', value: formatWhen(data.occurredAt) },
+          { icon: <PlaceOutlinedIcon fontSize="small" />, label: 'Location', value: data.locationName || placeName(data.region, data.district) },
+          { icon: <PersonOutlineRoundedIcon fontSize="small" />, label: 'Reported by', value: reporter },
+          { icon: <AssignmentIndOutlinedIcon fontSize="small" />, label: 'Reviewer', value: data.investigator?.fullName ?? 'Not assigned' },
+        ]}
+      />
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6">{data.title}</Typography>
-          <Typography color="text.secondary" mt={0.5}>
-            Occurred {new Date(data.occurredAt).toLocaleString()}
-            {data.locationName ? ` · ${data.locationName}` : ''}
+      <CaseFileCard title="What happened">
+        <Typography sx={{ mt: 1.5, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+          {data.description || 'No description was recorded.'}
+        </Typography>
+        {(data.bodyPartAtRisk || data.potentialInjuryNature) && (
+          <Typography variant="body2" color="text.secondary" mt={2}>
+            {[data.bodyPartAtRisk, data.potentialInjuryNature].filter(Boolean).join(' · ').replaceAll('_', ' ')}
           </Typography>
-          <Divider sx={{ my: 2 }} />
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 8 }}>
-              <Typography variant="overline" color="text.secondary">What happened</Typography>
-              <Typography>{data.description}</Typography>
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="overline" color="text.secondary">Where</Typography>
-              <Typography>{data.region?.name ?? '—'} / {data.district?.name ?? '—'}</Typography>
-              <Typography variant="overline" color="text.secondary" display="block" mt={2}>Reported by</Typography>
-              <Typography>
-                {data.anonymous
-                  ? data.reportedBy?.fullName
-                    ? `Confidential · ${data.reportedBy.fullName}`
-                    : 'Confidential'
-                  : data.reportedBy?.fullName ?? '—'}
-              </Typography>
-              {(data.bodyPartAtRisk || data.potentialInjuryNature) && (
-                <Typography variant="body2" color="text.secondary" mt={2}>
-                  {[data.bodyPartAtRisk, data.potentialInjuryNature].filter(Boolean).join(' · ').replaceAll('_', ' ')}
-                </Typography>
-              )}
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+        )}
+      </CaseFileCard>
 
       <Photos nearMiss={data} />
       <Review nearMiss={data} />
@@ -116,18 +139,15 @@ function Photos({ nearMiss }: { nearMiss: NearMissDto }) {
   const photos = nearMiss.attachments ?? [];
   if (photos.length === 0) return null;
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" fontWeight={700}>Photos</Typography>
-        <Grid container spacing={2} mt={0.5}>
+    <CaseFileCard title="Photo evidence" hint="Captured or uploaded with this report.">
+        <Grid container spacing={2} mt={2}>
           {photos.map((photo) => (
             <Grid key={photo.id} size={{ xs: 12, sm: 6, md: 4 }}>
               <PhotoThumb nearMissId={nearMiss.id} photo={photo} />
             </Grid>
           ))}
         </Grid>
-      </CardContent>
-    </Card>
+    </CaseFileCard>
   );
 }
 
@@ -262,20 +282,22 @@ function Review({ nearMiss }: { nearMiss: NearMissDto }) {
   };
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2.5}>
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
-      <Card>
-        <CardContent>
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
           <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <Typography variant="h6" fontWeight={700}>Review</Typography>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>
+              Review
+            </Typography>
             <Chip
               size="small"
-              label={nearMiss.investigator?.fullName ? `Reviewer: ${nearMiss.investigator.fullName}` : 'No reviewer'}
+              label={nearMiss.investigator?.fullName ? nearMiss.investigator.fullName : 'No reviewer'}
               color={nearMiss.investigator?.fullName ? 'primary' : 'warning'}
               variant={nearMiss.investigator?.fullName ? 'filled' : 'outlined'}
             />
           </Stack>
-          <Typography variant="body2" color="text.secondary" mt={0.5}>
+          <Typography variant="body2" color="text.secondary" mt={0.75}>
             Confirm how serious it could have been, record the cause, then close it or raise the action that stops it happening.
           </Typography>
 
@@ -387,10 +409,12 @@ function Review({ nearMiss }: { nearMiss: NearMissDto }) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Corrective actions</Typography>
-          <Stack spacing={1} mt={1}>
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>
+            Corrective actions
+          </Typography>
+          <Stack spacing={1.25} mt={1.5}>
             {((capas.data?.items ?? []) as Array<{ id: string; referenceCode?: string; title?: string; status?: string }>).length === 0 && (
               <Typography variant="body2" color="text.secondary">No action raised from this near-miss yet.</Typography>
             )}

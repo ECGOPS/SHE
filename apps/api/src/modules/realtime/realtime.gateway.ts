@@ -28,7 +28,7 @@ interface AuthSocket extends Socket {
 /**
  * Each connected client joins only the rooms its role is allowed to hear:
  *
- *   - SYS_ADMIN / GLOBAL_USER → global
+ *   - SYS_ADMIN / GLOBAL_SAFETY_OFFICER / HEAD_OFFICE_SHE → global
  *   - REGIONAL_USER           → region:<id>
  *   - DISTRICT_USER           → district:<id>
  *

@@ -80,4 +80,17 @@ export class CorrectiveAction extends ScopedEntity {
   /** Distinguishes correction (immediate fix) from corrective action (root-cause). */
   @Column({ type: 'varchar', length: 32, default: 'CORRECTIVE_ACTION' })
   actionType!: 'CORRECTION' | 'CORRECTIVE_ACTION' | 'PREVENTIVE_ACTION';
+
+  /** Whether a procedure, JSA, or other protocol must be updated. */
+  @Column({ type: 'boolean', default: false })
+  protocolUpdateRequired!: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  protocolUpdateNotes?: string | null;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  protocolLinkKind?: 'DOCUMENT' | 'JSA' | 'HAZARD' | 'CHANGE' | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  protocolLinkId?: string | null;
 }

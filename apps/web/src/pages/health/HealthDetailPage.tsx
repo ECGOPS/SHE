@@ -1,8 +1,20 @@
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
+import { Alert, Stack, Typography } from '@mui/material';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import MedicalInformationOutlinedIcon from '@mui/icons-material/MedicalInformationOutlined';
 import { endpoints } from '../../api/endpoints';
 import { ExportReportButton } from '../../components/ExportReportButton';
+import {
+  CaseFileCard,
+  CaseFileHeader,
+  CaseFileSkeleton,
+  formatDay,
+  placeName,
+  titleCase,
+} from '../../components/case-file';
 
 interface HealthRecord {
   id: string;
@@ -31,61 +43,58 @@ interface HealthRecord {
   district?: { name?: string } | null;
 }
 
-function words(value: unknown): string {
-  return String(value ?? '').replaceAll('_', ' ');
-}
-
 function Line({ label, value }: { label: string; value?: string | number | null }) {
   if (value == null || value === '') return null;
-  return <Typography variant="body2">{label}: {typeof value === 'string' ? words(value) : value}</Typography>;
+  return (
+    <Typography variant="body2" mt={1}>
+      <strong>{label}. </strong>{typeof value === 'string' ? titleCase(value) : value}
+    </Typography>
+  );
 }
 
 export function HealthDetailPage() {
   const { id = '' } = useParams();
   const record = useQuery({ queryKey: ['health', id], queryFn: () => endpoints.healthRecord(id) as Promise<HealthRecord> });
   const data = record.data;
-  if (record.isLoading) return <Alert severity="info">Loading the health record...</Alert>;
+  if (record.isLoading) return <CaseFileSkeleton />;
   if (!data) return <Alert severity="error">Health record not found</Alert>;
   const showsNotes = 'clinicalNotes' in data;
   return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={1}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-          <Typography variant="h5" fontWeight={700}>{data.referenceCode}</Typography>
-          <Chip label={words(data.recordType)} />
-          <Chip label={words(data.reviewState)} color={data.reviewState === 'OVERDUE' ? 'warning' : 'default'} />
-        </Stack>
-        <ExportReportButton filename={`${data.referenceCode ?? 'health'}-report.pdf`} download={() => endpoints.healthReport(id)} />
-      </Stack>
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>{data.employee?.fullName || data.campaignTitle || 'Workplace reading'}</Typography>
-          <Line label="Region" value={data.region?.name} />
-          <Line label="District" value={data.district?.name} />
-          <Line label="Record date" value={data.recordDate ? String(data.recordDate).slice(0, 10) : ''} />
-          <Line label="Cleared for" value={data.duty} />
-          <Line label="Fitness" value={data.fitnessOutcome} />
-          <Line label="Restriction" value={data.restrictions} />
-          <Line label="Test" value={data.surveillanceTest} />
-          <Line label="Agent" value={data.exposureAgent} />
-          <Line label="Reading" value={data.exposureReading} />
-          <Line label="Place" value={data.locationName} />
-          <Line label="Vaccine" value={data.vaccine} />
-          <Line label="Dose" value={data.dose} />
-          <Line label="Batch" value={data.batchNumber} />
-          <Line label="Attended" value={data.attendeeCount} />
-          <Line label="Next review" value={data.nextReviewDate ? String(data.nextReviewDate).slice(0, 10) : ''} />
-          <Line label="Clinician" value={data.clinician} />
-        </CardContent>
-      </Card>
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/health"
+        backLabel="Occupational health"
+        reference={data.referenceCode}
+        title={data.employee?.fullName || data.campaignTitle || 'Workplace reading'}
+        chips={[
+          { label: titleCase(data.recordType), variant: 'outlined' },
+          { label: titleCase(data.reviewState), color: data.reviewState === 'OVERDUE' ? 'warning' : 'default' },
+          ...(data.fitnessOutcome ? [{ label: titleCase(data.fitnessOutcome), color: data.fitnessOutcome === 'UNFIT' ? 'error' as const : 'success' as const }] : []),
+        ]}
+        actions={<ExportReportButton filename={`${data.referenceCode ?? 'health'}-report.pdf`} download={() => endpoints.healthReport(id)} />}
+        meta={[
+          { icon: <EventOutlinedIcon fontSize="small" />, label: 'Record date', value: formatDay(data.recordDate) },
+          { icon: <PlaceOutlinedIcon fontSize="small" />, label: 'Location', value: data.locationName || placeName(data.region, data.district) },
+          { icon: <PersonOutlineRoundedIcon fontSize="small" />, label: 'Clinician', value: data.clinician || '—' },
+          { icon: <MedicalInformationOutlinedIcon fontSize="small" />, label: 'Next review', value: formatDay(data.nextReviewDate) },
+        ]}
+      />
+      <CaseFileCard title="Record">
+        <Line label="Cleared for" value={data.duty} />
+        <Line label="Fitness" value={data.fitnessOutcome} />
+        <Line label="Restriction" value={data.restrictions} />
+        <Line label="Test" value={data.surveillanceTest} />
+        <Line label="Agent" value={data.exposureAgent} />
+        <Line label="Reading" value={data.exposureReading} />
+        <Line label="Vaccine" value={data.vaccine} />
+        <Line label="Dose" value={data.dose} />
+        <Line label="Batch" value={data.batchNumber} />
+        <Line label="Attended" value={data.attendeeCount} />
+      </CaseFileCard>
       {showsNotes && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" fontWeight={700}>Clinical note</Typography>
-            <Typography variant="body2" color="text.secondary">Visible to the people who record health.</Typography>
-            <Typography variant="body2" mt={1}>{data.clinicalNotes || 'No clinical note was recorded.'}</Typography>
-          </CardContent>
-        </Card>
+        <CaseFileCard title="Clinical note" hint="Visible to the people who record health.">
+          <Typography variant="body2" mt={1.5}>{data.clinicalNotes || 'No clinical note was recorded.'}</Typography>
+        </CaseFileCard>
       )}
     </Stack>
   );

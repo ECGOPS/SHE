@@ -281,10 +281,14 @@ export const ISO_14001_CLAUSES = [
 export const MANAGEMENT_RECORD_KIND = [
   'POLICY',
   'SCOPE',
+  'CONTEXT',
   'INTERESTED_PARTY',
   'OBLIGATION',
   'OBJECTIVE',
   'ASPECT',
+  'DOCUMENT',
+  'COMMUNICATION',
+  'MONITORING',
   'CHANGE',
   'EMERGENCY',
   'REVIEW',
@@ -298,6 +302,15 @@ export type ManagementStandard = (typeof MANAGEMENT_STANDARD)[number];
 
 export const COMPLIANCE_RESULT = ['NOT_EVALUATED', 'COMPLIANT', 'PARTIAL', 'NONCOMPLIANT'] as const;
 export type ComplianceResult = (typeof COMPLIANCE_RESULT)[number];
+
+export const DOCUMENT_STATUS = ['DRAFT', 'CURRENT', 'SUPERSEDED'] as const;
+export type DocumentStatus = (typeof DOCUMENT_STATUS)[number];
+
+export const ISSUE_ORIGIN = ['INTERNAL', 'EXTERNAL'] as const;
+export type IssueOrigin = (typeof ISSUE_ORIGIN)[number];
+
+export const PROTOCOL_LINK_KIND = ['DOCUMENT', 'JSA', 'HAZARD', 'CHANGE'] as const;
+export type ProtocolLinkKind = (typeof PROTOCOL_LINK_KIND)[number];
 
 /**
  * ISO 14001 §6.1.2 environmental aspect categories — what an activity

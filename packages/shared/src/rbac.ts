@@ -6,8 +6,9 @@ import { IssueScope } from './enums.js';
  * Scope (where the person works) and job (what they do) are separate:
  *
  *  SYS_ADMIN                 - full system access, no scope
- *  GLOBAL_USER               - Head Office staff. Read across the organisation.
- *  GLOBAL_SAFETY_OFFICER     - Head Office safety officer. Approves and closes.
+ *  GLOBAL_USER               - Head Office staff. Reports like regional and district staff.
+ *  GLOBAL_SAFETY_OFFICER     - Head Office safety officer. Sees every place. Approves and closes.
+ *  HEAD_OFFICE_SHE           - Head Office SHE. Same work as Head Office safety officer.
  *  REGIONAL_USER             - staff in one region. Reports incidents.
  *  REGIONAL_SAFETY_OFFICER   - safety officer for one region. Investigates and approves.
  *  DISTRICT_USER             - staff in one district. Reports incidents.
@@ -17,6 +18,7 @@ import { IssueScope } from './enums.js';
 export enum Role {
   SYS_ADMIN = 'SYS_ADMIN',
   GLOBAL_SAFETY_OFFICER = 'GLOBAL_SAFETY_OFFICER',
+  HEAD_OFFICE_SHE = 'HEAD_OFFICE_SHE',
   GLOBAL_USER = 'GLOBAL_USER',
   REGIONAL_SAFETY_OFFICER = 'REGIONAL_SAFETY_OFFICER',
   REGIONAL_USER = 'REGIONAL_USER',
@@ -28,6 +30,7 @@ export enum Role {
 export const ROLE_HIERARCHY: Record<Role, number> = {
   [Role.SYS_ADMIN]: 100,
   [Role.GLOBAL_SAFETY_OFFICER]: 80,
+  [Role.HEAD_OFFICE_SHE]: 79,
   [Role.GLOBAL_USER]: 75,
   [Role.REGIONAL_SAFETY_OFFICER]: 55,
   [Role.REGIONAL_USER]: 50,
@@ -39,6 +42,7 @@ export const ROLE_HIERARCHY: Record<Role, number> = {
 export const ROLE_LABEL: Record<Role, string> = {
   [Role.SYS_ADMIN]: 'System administrator',
   [Role.GLOBAL_SAFETY_OFFICER]: 'Head Office safety officer',
+  [Role.HEAD_OFFICE_SHE]: 'Head Office SHE',
   [Role.GLOBAL_USER]: 'Head Office staff',
   [Role.REGIONAL_SAFETY_OFFICER]: 'Regional safety officer',
   [Role.REGIONAL_USER]: 'Regional staff',
@@ -47,9 +51,21 @@ export const ROLE_LABEL: Record<Role, string> = {
   [Role.STAFF]: 'Staff',
 };
 
-/** Head Office and system accounts are not locked to a region or district. */
+export const HEAD_OFFICE_OFFICER_ROLES: Role[] = [Role.GLOBAL_SAFETY_OFFICER, Role.HEAD_OFFICE_SHE];
+
+export const SAFETY_OFFICER_ROLES: Role[] = [
+  Role.DISTRICT_SAFETY_OFFICER,
+  Role.REGIONAL_SAFETY_OFFICER,
+  ...HEAD_OFFICE_OFFICER_ROLES,
+];
+
+export function isHeadOfficeOfficer(role: Role): boolean {
+  return HEAD_OFFICE_OFFICER_ROLES.includes(role);
+}
+
+/** Administrator and Head Office safety see every region and district. Head Office staff do not. */
 export function isGlobalScope(role: Role): boolean {
-  return role === Role.SYS_ADMIN || role === Role.GLOBAL_USER || role === Role.GLOBAL_SAFETY_OFFICER;
+  return role === Role.SYS_ADMIN || isHeadOfficeOfficer(role);
 }
 
 export function isRegionalScope(role: Role): boolean {
@@ -65,23 +81,41 @@ export function isStaffRole(role: Role): boolean {
   return role === Role.STAFF;
 }
 
+/** Staff and Head Office staff have no home region. They only see records they filed. */
+export function isUnscopedReporter(role: Role): boolean {
+  return role === Role.STAFF || role === Role.GLOBAL_USER;
+}
+
+/** Accounts that are not assigned a region or district. */
+export function isUnscopedSeat(role: Role): boolean {
+  return isGlobalScope(role) || isUnscopedReporter(role);
+}
+
 export function isSafetyOfficer(role: Role): boolean {
+  return SAFETY_OFFICER_ROLES.includes(role);
+}
+
+/** Staff, Head Office staff, district staff, and regional staff choose the place on each report. Safety officers stay on the scope an administrator assigned. */
+export function reportsInChosenPlace(role: Role): boolean {
   return (
-    role === Role.DISTRICT_SAFETY_OFFICER ||
-    role === Role.REGIONAL_SAFETY_OFFICER ||
-    role === Role.GLOBAL_SAFETY_OFFICER
+    role === Role.STAFF ||
+    role === Role.GLOBAL_USER ||
+    role === Role.DISTRICT_USER ||
+    role === Role.REGIONAL_USER
   );
 }
 
-/** Staff choose the region and district on each report. Safety officers stay on the scope an administrator assigned. */
-export function reportsInChosenPlace(role: Role): boolean {
-  return role === Role.STAFF || role === Role.DISTRICT_USER || role === Role.REGIONAL_USER;
+/** Where a safety officer sits on the district → region → Head Office ladder. Reporters do not sit on the ladder. */
+export function issueScopeForRole(role: Role): IssueScope {
+  if (isUnscopedReporter(role) || isDistrictScope(role)) return IssueScope.DISTRICT;
+  if (isRegionalScope(role)) return IssueScope.REGIONAL;
+  return IssueScope.HEAD_OFFICE;
 }
 
-/** Escalation tier a newly reported issue starts on, taken from the reporter's seat. */
-export function issueScopeForRole(role: Role): IssueScope {
-  if (isStaffRole(role) || isDistrictScope(role)) return IssueScope.DISTRICT;
-  if (isRegionalScope(role)) return IssueScope.REGIONAL;
+/** Escalation tier a new report starts on — the place on the form, not the reporter's seat. */
+export function issueScopeForPlace(place: { regionId?: string | null; districtId?: string | null }): IssueScope {
+  if (place.districtId) return IssueScope.DISTRICT;
+  if (place.regionId) return IssueScope.REGIONAL;
   return IssueScope.HEAD_OFFICE;
 }
 
@@ -178,65 +212,50 @@ const STAFF_REPORT: PermissionValue[] = [
   Permission.IMS_READ,
 ];
 
+const HEAD_OFFICE_OFFICER_PERMISSIONS: PermissionValue[] = [
+  Permission.INCIDENT_READ,
+  Permission.INCIDENT_APPROVE,
+  Permission.HAZARD_READ,
+  Permission.HAZARD_CREATE,
+  Permission.HAZARD_APPROVE,
+  Permission.NEAR_MISS_READ,
+  Permission.NEAR_MISS_CREATE,
+  Permission.JSA_READ,
+  Permission.JSA_CREATE,
+  Permission.JSA_APPROVE,
+  Permission.PTW_READ,
+  Permission.PTW_CREATE,
+  Permission.PTW_APPROVE,
+  Permission.INSPECTION_READ,
+  Permission.INSPECTION_CONDUCT,
+  Permission.AUDIT_READ,
+  Permission.AUDIT_CONDUCT,
+  Permission.AUDIT_CLOSE,
+  Permission.ENV_READ,
+  Permission.ENV_CREATE,
+  Permission.ENV_CLOSE,
+  Permission.HEALTH_READ,
+  Permission.HEALTH_CREATE,
+  Permission.TRAINING_READ,
+  Permission.TRAINING_MANAGE,
+  Permission.PPE_READ,
+  Permission.PPE_MANAGE,
+  Permission.CAPA_READ,
+  Permission.CAPA_CREATE,
+  Permission.CAPA_UPDATE,
+  Permission.CAPA_VERIFY,
+  Permission.CAPA_CLOSE,
+  Permission.IMS_READ,
+  Permission.IMS_MANAGE,
+  Permission.AUDIT_TRAIL_READ,
+  Permission.REPORT_GENERATE,
+];
+
 export const ROLE_PERMISSIONS: Record<Role, PermissionValue[]> = {
   [Role.SYS_ADMIN]: Object.values(Permission),
-  [Role.GLOBAL_SAFETY_OFFICER]: [
-    Permission.INCIDENT_READ,
-    Permission.INCIDENT_APPROVE,
-    Permission.HAZARD_READ,
-    Permission.HAZARD_CREATE,
-    Permission.HAZARD_APPROVE,
-    Permission.NEAR_MISS_READ,
-    Permission.NEAR_MISS_CREATE,
-    Permission.JSA_READ,
-    Permission.JSA_CREATE,
-    Permission.JSA_APPROVE,
-    Permission.PTW_READ,
-    Permission.PTW_CREATE,
-    Permission.PTW_APPROVE,
-    Permission.INSPECTION_READ,
-    Permission.INSPECTION_CONDUCT,
-    Permission.AUDIT_READ,
-    Permission.AUDIT_CONDUCT,
-    Permission.AUDIT_CLOSE,
-    Permission.ENV_READ,
-    Permission.ENV_CREATE,
-    Permission.ENV_CLOSE,
-    Permission.HEALTH_READ,
-    Permission.HEALTH_CREATE,
-    Permission.TRAINING_READ,
-    Permission.TRAINING_MANAGE,
-    Permission.PPE_READ,
-    Permission.PPE_MANAGE,
-    Permission.CAPA_READ,
-    Permission.CAPA_CREATE,
-    Permission.CAPA_UPDATE,
-    Permission.CAPA_VERIFY,
-    Permission.CAPA_CLOSE,
-    Permission.IMS_READ,
-    Permission.IMS_MANAGE,
-    Permission.AUDIT_TRAIL_READ,
-    Permission.REPORT_GENERATE,
-  ],
-  [Role.GLOBAL_USER]: [
-    Permission.INCIDENT_READ,
-    Permission.HAZARD_READ,
-    Permission.HAZARD_CREATE,
-    Permission.NEAR_MISS_READ,
-    Permission.NEAR_MISS_CREATE,
-    Permission.JSA_READ,
-    Permission.PTW_READ,
-    Permission.INSPECTION_READ,
-    Permission.AUDIT_READ,
-    Permission.ENV_READ,
-    Permission.HEALTH_READ,
-    Permission.TRAINING_READ,
-    Permission.PPE_READ,
-    Permission.CAPA_READ,
-    Permission.IMS_READ,
-    Permission.AUDIT_TRAIL_READ,
-    Permission.REPORT_GENERATE,
-  ],
+  [Role.GLOBAL_SAFETY_OFFICER]: HEAD_OFFICE_OFFICER_PERMISSIONS,
+  [Role.HEAD_OFFICE_SHE]: HEAD_OFFICE_OFFICER_PERMISSIONS,
+  [Role.GLOBAL_USER]: STAFF_REPORT,
   [Role.REGIONAL_SAFETY_OFFICER]: [
     Permission.INCIDENT_READ,
     Permission.INCIDENT_CREATE,

@@ -8,7 +8,9 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Chip,
+  FormControlLabel,
   MenuItem,
   Stack,
   TextField,
@@ -16,6 +18,7 @@ import {
 } from '@mui/material';
 import { Permission, ROLE_LABEL, Role } from '@ecg-she/shared';
 import { endpoints, IncidentDto } from '../../api/endpoints';
+import { CASE_FILE_CARD_SX } from '../../components/case-file';
 import { useAuthStore } from '../../stores/auth.store';
 
 const FINDING_CATEGORIES = [
@@ -67,6 +70,26 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
       endpoints.capa({ sourceType: 'INCIDENT', sourceId: incident.id, pageSize: 50 }),
     enabled: permissions.includes(Permission.CAPA_READ),
   });
+  const documents = useQuery({
+    queryKey: ['management-records', 'DOCUMENT'],
+    queryFn: () => endpoints.managementRecords({ kind: 'DOCUMENT', pageSize: 50 }),
+    enabled: canCreateCapa,
+  });
+  const changes = useQuery({
+    queryKey: ['management-records', 'CHANGE'],
+    queryFn: () => endpoints.managementRecords({ kind: 'CHANGE', pageSize: 50 }),
+    enabled: canCreateCapa,
+  });
+  const jsas = useQuery({
+    queryKey: ['jsa-protocol-links'],
+    queryFn: () => endpoints.jsa({ pageSize: 50 }),
+    enabled: canCreateCapa,
+  });
+  const hazards = useQuery({
+    queryKey: ['hazard-protocol-links'],
+    queryFn: () => endpoints.hazards({ pageSize: 50 }),
+    enabled: canCreateCapa,
+  });
 
   const run = (fn: () => Promise<unknown>) =>
     fn()
@@ -88,6 +111,10 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
   const submit = useMutation({ mutationFn: () => endpoints.submitIncident(incident.id) });
   const close = useMutation({ mutationFn: () => endpoints.closeIncident(incident.id) });
 
+  const hasRootCause = (incident.findings ?? []).some((item) => item.category === 'ROOT');
+  const capaReady = !capas.isFetched || (capas.data?.items ?? []).length > 0;
+  const readyForManagement = !!incident.investigatorId && hasRootCause && capaReady;
+
   const [investigatorId, setInvestigatorId] = useState(incident.investigatorId ?? '');
   useEffect(() => {
     setInvestigatorId(incident.investigatorId ?? '');
@@ -101,6 +128,10 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
   const [actionTitle, setActionTitle] = useState('');
   const [actionDescription, setActionDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [protocolUpdateRequired, setProtocolUpdateRequired] = useState(false);
+  const [protocolUpdateNotes, setProtocolUpdateNotes] = useState('');
+  const [protocolLinkKind, setProtocolLinkKind] = useState('');
+  const [protocolLinkId, setProtocolLinkId] = useState('');
 
   const onWitness = (event: FormEvent) => {
     event.preventDefault();
@@ -142,36 +173,54 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
         districtId: incident.districtId ?? incident.district?.id,
         actionType: 'CORRECTIVE_ACTION',
         priority: incident.severity === 'CATASTROPHIC' || incident.severity === 'MAJOR' ? 'HIGH' : 'MEDIUM',
+        protocolUpdateRequired,
+        protocolUpdateNotes: protocolUpdateRequired ? protocolUpdateNotes.trim() || undefined : undefined,
+        protocolLinkKind: protocolUpdateRequired ? protocolLinkKind || undefined : undefined,
+        protocolLinkId: protocolUpdateRequired ? protocolLinkId || undefined : undefined,
       });
       setActionTitle('');
       setActionDescription('');
       setDueDate('');
+      setProtocolUpdateRequired(false);
+      setProtocolUpdateNotes('');
+      setProtocolLinkKind('');
+      setProtocolLinkId('');
     });
   };
 
+  const cardSx = CASE_FILE_CARD_SX;
+
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2.5}>
       {error && (
         <Alert severity="error" onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      <Card>
-        <CardContent>
+      <Card sx={cardSx}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
           <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
-            <Typography variant="h6" fontWeight={700}>
+            <Typography
+              variant="overline"
+              color="text.secondary"
+              sx={{ letterSpacing: 1, fontWeight: 700 }}
+            >
               Investigation
             </Typography>
             <Chip
               size="small"
-              label={incident.investigator?.fullName ? `Investigator: ${incident.investigator.fullName}` : 'No investigator'}
+              label={incident.investigator?.fullName ? incident.investigator.fullName : 'No investigator'}
               color={incident.investigator?.fullName ? 'primary' : 'warning'}
               variant={incident.investigator?.fullName ? 'filled' : 'outlined'}
             />
           </Stack>
-          <Typography variant="body2" color="text.secondary" mt={0.5}>
-            Name who is investigating, record what people saw and why it happened, then raise the action that removes the cause. Resolving the case closes it.
+          <Typography variant="body2" color="text.secondary" mt={0.75}>
+            {canRecord
+              ? 'Name who is investigating, record what people saw and the root cause, then raise the action that removes it. Submit the pack to management when that work is on record.'
+              : incident.investigator?.fullName
+                ? 'You can read who is investigating and what they have recorded. A safety officer assigns the investigator and submits this to management.'
+                : 'No investigator has been named yet. The safety officer for this place will assign someone and record witnesses, the root cause and the action here.'}
           </Typography>
 
           {canRecord && !closed && (
@@ -197,8 +246,12 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
                 {incident.investigatorId ? 'Reassign' : 'Assign'}
               </Button>
               {canSubmit && (incident.status === 'REPORTED' || incident.status === 'UNDER_INVESTIGATION') && (
-                <Button variant="outlined" disabled={submit.isPending} onClick={() => void run(() => submit.mutateAsync())}>
-                  Submit for approval
+                <Button
+                  variant="outlined"
+                  disabled={submit.isPending || !readyForManagement}
+                  onClick={() => void run(() => submit.mutateAsync())}
+                >
+                  Submit to management
                 </Button>
               )}
               {canApprove && incident.status === 'PENDING_APPROVAL' && (
@@ -208,22 +261,41 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
               )}
             </Stack>
           )}
+          {canSubmit && (incident.status === 'REPORTED' || incident.status === 'UNDER_INVESTIGATION') && !readyForManagement && (
+            <Alert severity="info" sx={{ mt: 2 }}>
+              Before submitting to management: assign an investigator, record a root-cause finding, and raise at least one corrective action.
+            </Alert>
+          )}
+          {incident.status === 'PENDING_APPROVAL' && incident.managementReportSubmittedAt && (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              Submitted to management {new Date(incident.managementReportSubmittedAt).toLocaleString()}
+              {incident.managementReportSubmittedBy?.fullName
+                ? ` by ${incident.managementReportSubmittedBy.fullName}`
+                : ''}
+              .
+            </Alert>
+          )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Witnesses</Typography>
-          <Stack spacing={1} mt={1}>
+      <Card sx={cardSx}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>
+            Witnesses
+          </Typography>
+          <Stack spacing={1.25} mt={1.5}>
             {(incident.witnesses ?? []).length === 0 && (
               <Typography variant="body2" color="text.secondary">No witness statements yet.</Typography>
             )}
             {(incident.witnesses ?? []).map((item) => (
-              <Box key={item.id}>
+              <Box
+                key={item.id}
+                sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider', bgcolor: 'rgba(11, 83, 148, 0.03)' }}
+              >
                 <Typography variant="body2" fontWeight={700}>
                   {item.fullName}{item.role ? ` · ${item.role}` : ''}
                 </Typography>
-                <Typography variant="body2">{item.statement}</Typography>
+                <Typography variant="body2" mt={0.5} sx={{ lineHeight: 1.6 }}>{item.statement}</Typography>
               </Box>
             ))}
           </Stack>
@@ -242,19 +314,24 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Findings</Typography>
-          <Stack spacing={1} mt={1}>
+      <Card sx={cardSx}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>
+            Findings
+          </Typography>
+          <Stack spacing={1.25} mt={1.5}>
             {(incident.findings ?? []).length === 0 && (
               <Typography variant="body2" color="text.secondary">No causes recorded yet.</Typography>
             )}
             {(incident.findings ?? []).map((item) => (
-              <Box key={item.id}>
-                <Chip size="small" label={item.category.replaceAll('_', ' ')} sx={{ mb: 0.5 }} />
+              <Box
+                key={item.id}
+                sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}
+              >
+                <Chip size="small" label={item.category.replaceAll('_', ' ')} sx={{ mb: 0.75 }} />
                 <Typography variant="body2">{item.description}</Typography>
                 {item.recommendation && (
-                  <Typography variant="body2" color="text.secondary">Recommendation: {item.recommendation}</Typography>
+                  <Typography variant="body2" color="text.secondary" mt={0.5}>Recommendation: {item.recommendation}</Typography>
                 )}
               </Box>
             ))}
@@ -276,18 +353,28 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Corrective actions</Typography>
-          <Typography variant="body2" color="text.secondary" mt={0.5}>
+      <Card sx={cardSx}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>
+            Corrective actions
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.75}>
             The work that removes the cause. These stay open on the CAPA list until they are verified.
           </Typography>
-          <Stack spacing={1} mt={1}>
+          <Stack spacing={1.25} mt={1.5}>
             {(capas.data?.items ?? []).length === 0 && (
               <Typography variant="body2" color="text.secondary">No action raised from this incident yet.</Typography>
             )}
             {(capas.data?.items ?? []).map((item) => (
-              <Stack key={String(item.id)} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+              <Stack
+                key={String(item.id)}
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                flexWrap="wrap"
+                useFlexGap
+                sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}
+              >
                 <Typography variant="body2" fontWeight={700}>{String(item.referenceCode ?? '')}</Typography>
                 <Typography variant="body2">{String(item.title ?? '')}</Typography>
                 <Chip size="small" label={String(item.status ?? '').replaceAll('_', ' ')} />
@@ -300,9 +387,79 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
               <TextField size="small" label="Action title" required value={actionTitle} onChange={(e) => setActionTitle(e.target.value)} />
               <TextField size="small" label="What must be done" required multiline minRows={2} value={actionDescription} onChange={(e) => setActionDescription(e.target.value)} />
               <TextField size="small" type="date" label="Due date" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ maxWidth: 240 }} />
-              <Button type="submit" variant="outlined" disabled={capa.isPending} sx={{ alignSelf: 'flex-start' }}>
-                Raise corrective action
-              </Button>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={protocolUpdateRequired}
+                    onChange={(_, checked) => setProtocolUpdateRequired(checked)}
+                  />
+                }
+                label="A procedure, JSA, or other protocol must be updated"
+              />
+              {protocolUpdateRequired && (
+                <>
+                  <TextField
+                    size="small"
+                    label="Which protocol and what must change"
+                    required
+                    multiline
+                    minRows={2}
+                    value={protocolUpdateNotes}
+                    onChange={(e) => setProtocolUpdateNotes(e.target.value)}
+                  />
+                  <TextField
+                    select
+                    size="small"
+                    label="Link to"
+                    required
+                    value={protocolLinkKind}
+                    onChange={(e) => { setProtocolLinkKind(e.target.value); setProtocolLinkId(''); }}
+                  >
+                    <MenuItem value="DOCUMENT">Controlled document</MenuItem>
+                    <MenuItem value="JSA">Job safety analysis</MenuItem>
+                    <MenuItem value="HAZARD">Hazard</MenuItem>
+                    <MenuItem value="CHANGE">Management of change</MenuItem>
+                  </TextField>
+                  {protocolLinkKind === 'DOCUMENT' && (
+                    <TextField select size="small" label="Document" required value={protocolLinkId} onChange={(e) => setProtocolLinkId(e.target.value)}>
+                      {(documents.data?.items ?? []).map((row) => (
+                        <MenuItem key={String(row.id)} value={String(row.id)}>{String(row.referenceCode)} · {String(row.title)}</MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                  {protocolLinkKind === 'CHANGE' && (
+                    <TextField select size="small" label="Change record" required value={protocolLinkId} onChange={(e) => setProtocolLinkId(e.target.value)}>
+                      {(changes.data?.items ?? []).map((row) => (
+                        <MenuItem key={String(row.id)} value={String(row.id)}>{String(row.referenceCode)} · {String(row.title)}</MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                  {protocolLinkKind === 'JSA' && (
+                    <TextField select size="small" label="JSA" required value={protocolLinkId} onChange={(e) => setProtocolLinkId(e.target.value)}>
+                      {(jsas.data?.items ?? []).map((row) => (
+                        <MenuItem key={String(row.id)} value={String(row.id)}>{String(row.referenceCode ?? '')} · {String(row.title)}</MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                  {protocolLinkKind === 'HAZARD' && (
+                    <TextField select size="small" label="Hazard" required value={protocolLinkId} onChange={(e) => setProtocolLinkId(e.target.value)}>
+                      {(hazards.data?.items ?? []).map((row) => (
+                        <MenuItem key={String(row.id)} value={String(row.id)}>{String(row.referenceCode ?? '')} · {String(row.title)}</MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                </>
+              )}
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Button type="submit" variant="outlined" disabled={capa.isPending} sx={{ alignSelf: 'flex-start' }}>
+                  Raise corrective action
+                </Button>
+                {protocolUpdateRequired && (
+                  <Button component={RouterLink} to="/management" size="small">
+                    Open ISO registers
+                  </Button>
+                )}
+              </Stack>
             </Stack>
           )}
         </CardContent>

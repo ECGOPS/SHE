@@ -67,14 +67,14 @@ Every scoped record carries `tenantId`, `regionId`, and an optional `districtId`
 
 | Role | List filter |
 | --- | --- |
-| System administrator, Head Office staff, Head Office safety officer | Any row in the tenant |
+| System administrator, Head Office safety officer, Head Office SHE | Any row in the tenant |
 | Regional safety officer | `regionId` matches the officer |
 | Regional staff | Their region, plus rows they own outside that region |
 | District safety officer | `regionId` and `districtId` match the officer |
 | District staff | Their district, plus rows they own outside that district |
-| Staff | Rows they own |
+| Staff and Head Office staff | Rows they own |
 
-On write, staff and the two reporting roles must choose the region and district where the event happened. A safety officer cannot move a record into another place: the assigned region and district are written for them.
+On write, staff, Head Office staff, and the two reporting roles must choose the region and district where the event happened. A safety officer cannot move a record into another place: the assigned region and district are written for them.
 
 `ScopeGuard` answers “may this role call this route?”. `assertRecordAccess` answers “may this person open this row?”. Both run on direct API calls.
 
@@ -102,16 +102,16 @@ Incidents, hazards, near misses, and job safety analyses accept `offlineClientId
 
 | Caller | Rooms |
 | --- | --- |
-| System administrator, Head Office staff, Head Office safety officer | `global` and `user:<id>` |
+| System administrator, Head Office safety officer, Head Office SHE | `global` and `user:<id>` |
 | Regional staff and regional safety officer | `region:<regionId>` and `user:<id>` |
 | District staff and district safety officer | `district:<districtId>` and `user:<id>` |
-| Staff | `user:<id>` only |
+| Staff and Head Office staff | `user:<id>` only |
 
 `emitToScope()` sends to `global`, the region room, and the district room when a district is present. `apps/web/src/hooks/useRealtime.ts` listens for `incident:created`, `incident:pending-approval`, `hazard:high-risk`, `capa:overdue`, and `notification:new`, and invalidates the matching React Query caches.
 
 ## Escalation
 
-Incidents, hazards, near misses, and corrective actions carry an escalation tier: District, Region, Head Office. A new issue starts at the reporter’s tier. Escalate moves up the ladder. Refer down moves it back. Resolve, reopen, and reassign stay available to the officer who can see the record. The safety officer console reads this status for the officer’s scope.
+Incidents, hazards, near misses, and corrective actions carry an escalation tier: District, Region, Head Office. A new issue starts at the place on the form, not the reporter’s seat. Escalate moves up the ladder. Refer down moves it back. Resolve, reopen, and reassign stay available to the officer who can see the record. The safety officer console reads this status for the officer’s scope.
 
 ## Compliance mapping
 

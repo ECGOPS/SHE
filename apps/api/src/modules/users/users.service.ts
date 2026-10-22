@@ -5,9 +5,8 @@ import * as argon2 from 'argon2';
 import {
   AuthUser,
   isDistrictScope,
-  isGlobalScope,
   isRegionalScope,
-  isStaffRole,
+  isUnscopedSeat,
   Role,
   ROLE_PERMISSIONS,
 } from '@ecg-she/shared';
@@ -44,7 +43,7 @@ export class UsersService {
   constructor(@InjectRepository(User) private readonly users: Repository<User>) {}
 
   async create(input: CreateUserInput): Promise<User> {
-    if (isStaffRole(input.role) || isGlobalScope(input.role)) {
+    if (isUnscopedSeat(input.role)) {
       input.regionId = null;
       input.districtId = null;
     }
@@ -218,8 +217,8 @@ export class UsersService {
   /** An administrator sets the role and the scope. Staff stay unscoped. */
   async assign(id: string, input: { role: Role; regionId?: string | null; districtId?: string | null }): Promise<User> {
     await this.getOrThrow(id);
-    const regionId = isStaffRole(input.role) || isGlobalScope(input.role) ? null : input.regionId ?? null;
-    const districtId = isStaffRole(input.role) || isGlobalScope(input.role) || isRegionalScope(input.role) ? null : input.districtId ?? null;
+    const regionId = isUnscopedSeat(input.role) ? null : input.regionId ?? null;
+    const districtId = isUnscopedSeat(input.role) || isRegionalScope(input.role) ? null : input.districtId ?? null;
     this.assertScopeMatchesRole(input.role, regionId, districtId);
     await this.users.update(
       { id },
@@ -235,8 +234,8 @@ export class UsersService {
     if (isRegionalScope(role) && !regionId) {
       throw new BadRequestException('Regional staff and safety officers must be assigned a region');
     }
-    if (isGlobalScope(role) && (regionId || districtId)) {
-      throw new BadRequestException('Head Office and admin users must not be scoped to a region or district');
+    if (isUnscopedSeat(role) && (regionId || districtId)) {
+      throw new BadRequestException('Head Office, staff, and admin users must not be scoped to a region or district');
     }
   }
 }

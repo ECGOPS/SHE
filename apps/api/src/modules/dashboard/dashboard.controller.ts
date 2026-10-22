@@ -13,7 +13,7 @@ export class DashboardController {
 
   private assertDashboard(user: AuthUser): void {
     if (reportsInChosenPlace(user.role)) {
-      throw new ForbiddenException('The dashboard is for safety officers and Head Office');
+      throw new ForbiddenException('The dashboard is for safety officers and Head Office safety');
     }
   }
 

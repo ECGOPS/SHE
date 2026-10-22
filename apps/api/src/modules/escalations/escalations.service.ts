@@ -15,7 +15,7 @@ import {
   isGlobalScope,
   isRegionalScope,
   isSafetyOfficer,
-  isStaffRole,
+  isUnscopedReporter,
   issueScopeForRole,
   Permission,
   Role,
@@ -451,6 +451,9 @@ export class EscalationsService {
 
   private assertCanRead(user: AuthUser, issue: EscalatableIssue): void {
     if (isGlobalScope(user.role)) return;
+    if (isUnscopedReporter(user.role)) {
+      throw new ForbiddenException('Staff report the event. A safety officer for that place handles it');
+    }
     if (isRegionalScope(user.role)) {
       if (issue.regionId !== user.regionId) {
         throw new ForbiddenException('Issue is outside your region');
@@ -466,9 +469,8 @@ export class EscalationsService {
 
   /** Staff file the report. A safety officer for that place works the case. */
   private assertOfficer(user: AuthUser): void {
-    if (isStaffRole(user.role)) {
-      throw new ForbiddenException('Staff report the event. A safety officer for that district handles it');
-    }
+    if (user.role === Role.SYS_ADMIN || isSafetyOfficer(user.role)) return;
+    throw new ForbiddenException('Staff report the event. A safety officer for that district handles it');
   }
 
   /** Where on the tier does this user sit? */

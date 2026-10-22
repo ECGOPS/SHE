@@ -12,11 +12,14 @@ import { Repository } from 'typeorm';
 import {
   AuthUser,
   EscalationEntityType,
+  HEAD_OFFICE_OFFICER_ROLES,
   isDistrictScope,
+  issueScopeForPlace,
   issueScopeForRole,
   PaginatedResult,
   Permission,
   Role,
+  SAFETY_OFFICER_ROLES,
 } from '@ecg-she/shared';
 import { NearMiss } from './entities/near-miss.entity';
 import { NearMissAttachment } from './entities/near-miss-attachment.entity';
@@ -103,7 +106,7 @@ export class NearMissService {
       reportedById: user.id,
       referenceCode,
       status: 'REPORTED',
-      currentScope: issueScopeForRole(user.role),
+      currentScope: issueScopeForPlace(scoped),
       immediateCause: null,
       rootCause: null,
       witnessStatement: null,
@@ -176,10 +179,10 @@ export class NearMissService {
       .select(['u.id', 'u.fullName', 'u.role'])
       .where('u.active = :active', { active: true })
       .andWhere('u.role IN (:...officerRoles)', {
-        officerRoles: [Role.DISTRICT_SAFETY_OFFICER, Role.REGIONAL_SAFETY_OFFICER, Role.GLOBAL_SAFETY_OFFICER],
+        officerRoles: SAFETY_OFFICER_ROLES,
       })
-      .andWhere('(u.role = :globalOfficer OR u.regionId = :regionId)', {
-        globalOfficer: Role.GLOBAL_SAFETY_OFFICER,
+      .andWhere('(u.role IN (:...globalOfficers) OR u.regionId = :regionId)', {
+        globalOfficers: HEAD_OFFICE_OFFICER_ROLES,
         regionId: nearMiss.regionId,
       })
       .orderBy('u.fullName', 'ASC');

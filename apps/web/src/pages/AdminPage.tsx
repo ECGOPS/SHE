@@ -22,12 +22,13 @@ import {
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import { useForm } from 'react-hook-form';
-import { ROLE_LABEL, Role, isDistrictScope, isGlobalScope, isRegionalScope, isStaffRole } from '@ecg-she/shared';
+import { ROLE_LABEL, Role, isDistrictScope, isRegionalScope, isUnscopedSeat } from '@ecg-she/shared';
 import { endpoints, type RegionDto } from '../api/endpoints';
 
 const ROLE_COLOR: Record<string, 'default' | 'error' | 'warning' | 'info' | 'success'> = {
   SYS_ADMIN: 'error',
   GLOBAL_SAFETY_OFFICER: 'warning',
+  HEAD_OFFICE_SHE: 'warning',
   GLOBAL_USER: 'default',
   REGIONAL_SAFETY_OFFICER: 'info',
   REGIONAL_USER: 'default',
@@ -73,7 +74,7 @@ function UsersTab() {
   const submit = handleSubmit((v) => {
     const cleaned: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(v)) if (val) cleaned[k] = val;
-    if (isStaffRole(v.role as Role) || isGlobalScope(v.role as Role)) {
+    if (isUnscopedSeat(v.role as Role)) {
       delete cleaned.regionId;
       delete cleaned.districtId;
     }

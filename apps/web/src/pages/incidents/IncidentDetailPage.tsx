@@ -1,26 +1,49 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  Dialog,
-  DialogContent,
-  Divider,
-  Grid2 as Grid,
-  Stack,
-  Typography,
-} from '@mui/material';
-import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
-import { EscalationEntityType, IssueScope } from '@ecg-she/shared';
+import { Box, Button, Dialog, DialogContent, Grid2 as Grid, Stack, Typography } from '@mui/material';
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import AssignmentIndOutlinedIcon from '@mui/icons-material/AssignmentIndOutlined';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import LocalHospitalOutlinedIcon from '@mui/icons-material/LocalHospitalOutlined';
+import SupervisorAccountOutlinedIcon from '@mui/icons-material/SupervisorAccountOutlined';
+import PhoneInTalkOutlinedIcon from '@mui/icons-material/PhoneInTalkOutlined';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import RadioButtonUncheckedRoundedIcon from '@mui/icons-material/RadioButtonUncheckedRounded';
+import { EscalationEntityType, ISSUE_SCOPE_LABEL, IssueScope } from '@ecg-she/shared';
 import { endpoints, IncidentDto } from '../../api/endpoints';
 import { imageSrcFromBlob } from '../../security/output';
 import { EscalationPanel } from '../../components/EscalationPanel';
+import { ExportReportButton } from '../../components/ExportReportButton';
+import {
+  CaseFileCard,
+  CaseFileHeader,
+  CaseFileMetric,
+  CaseFileSkeleton,
+  formatWhen,
+  placeName,
+  titleCase,
+} from '../../components/case-file';
 import { IncidentInvestigation } from './IncidentInvestigation';
+
+const SEV_COLOR: Record<string, 'default' | 'warning' | 'error' | 'success'> = {
+  NEGLIGIBLE: 'success',
+  MINOR: 'success',
+  MODERATE: 'warning',
+  MAJOR: 'error',
+  CATASTROPHIC: 'error',
+};
+
+const STATUS_COLOR: Record<string, 'default' | 'info' | 'warning' | 'success' | 'error'> = {
+  DRAFT: 'default',
+  REPORTED: 'info',
+  UNDER_INVESTIGATION: 'warning',
+  PENDING_APPROVAL: 'warning',
+  CLOSED: 'success',
+  REJECTED: 'error',
+};
 
 export function IncidentDetailPage() {
   const { id } = useParams();
@@ -29,82 +52,132 @@ export function IncidentDetailPage() {
     queryFn: () => endpoints.incident(id!),
     enabled: !!id,
   });
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
 
-  const exportReport = async () => {
-    if (!id || !incident) return;
-    setExporting(true);
-    setExportError(null);
-    try {
-      const response = await endpoints.incidentReport(id);
-      const url = URL.createObjectURL(response.data as Blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${incident.referenceCode}-report.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      setExportError('The report could not be prepared.');
-    } finally {
-      setExporting(false);
-    }
-  };
+  if (isLoading || !incident) return <CaseFileSkeleton />;
 
-  if (isLoading || !incident) return <Typography>Loading...</Typography>;
+  const scope = ISSUE_SCOPE_LABEL[incident.currentScope ?? IssueScope.DISTRICT];
 
   return (
-    <Stack spacing={3}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={1}>
-        <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
-          <Typography variant="h5" fontWeight={700}>{incident.referenceCode}</Typography>
-          <Chip label={incident.status.replaceAll('_', ' ')} color="primary" />
-          <Chip label={incident.severity} color="warning" />
-          <Chip label={incident.type.replaceAll('_', ' ')} variant="outlined" />
-        </Stack>
-        <Button
-          variant="contained"
-          startIcon={<DownloadRoundedIcon />}
-          disabled={exporting}
-          onClick={() => void exportReport()}
-        >
-          {exporting ? 'Preparing report…' : 'Export PDF report'}
-        </Button>
-      </Stack>
-      {exportError && <Alert severity="error" onClose={() => setExportError(null)}>{exportError}</Alert>}
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/incidents"
+        backLabel="Incidents"
+        reference={incident.referenceCode}
+        title={incident.title}
+        chips={[
+          { label: titleCase(incident.status), color: STATUS_COLOR[incident.status] ?? 'default' },
+          { label: titleCase(incident.severity), color: SEV_COLOR[incident.severity] ?? 'default' },
+          { label: titleCase(incident.type), variant: 'outlined' },
+          { label: incident.resolvedAt ? `Resolved at ${scope}` : `Open at ${scope}`, variant: 'outlined' },
+        ]}
+        actions={
+          id ? (
+            <ExportReportButton
+              filename={`${incident.referenceCode}-report.pdf`}
+              download={() => endpoints.incidentReport(id)}
+            />
+          ) : undefined
+        }
+        meta={[
+          { icon: <EventOutlinedIcon fontSize="small" />, label: 'Occurred', value: formatWhen(incident.occurredAt) },
+          { icon: <PlaceOutlinedIcon fontSize="small" />, label: 'Location', value: placeName(incident.region, incident.district) },
+          { icon: <PersonOutlineRoundedIcon fontSize="small" />, label: 'Reported by', value: incident.reportedBy?.fullName ?? '—' },
+          { icon: <AssignmentIndOutlinedIcon fontSize="small" />, label: 'Investigator', value: incident.investigator?.fullName ?? 'Not assigned' },
+        ]}
+      />
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6">{incident.title}</Typography>
-          <Typography color="text.secondary" mt={0.5}>
-            Occurred {new Date(incident.occurredAt).toLocaleString()}
-          </Typography>
-          <Divider sx={{ my: 2 }} />
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 8 }}>
-              <Typography variant="overline" color="text.secondary">Description</Typography>
-              <Typography>{incident.description}</Typography>
+      <Grid container spacing={2.5}>
+        <Grid size={{ xs: 12, md: 8 }}>
+          <CaseFileCard title="What happened">
+            <Typography sx={{ mt: 1.5, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+              {incident.description || 'No description was recorded.'}
+            </Typography>
+          </CaseFileCard>
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <CaseFileCard title="People and cost">
+            <Grid container spacing={1.25} mt={1.5}>
+              <Grid size={{ xs: 6, md: 12 }}>
+                <CaseFileMetric label="Fatalities" value={incident.fatalities} alert={incident.fatalities > 0} />
+              </Grid>
+              <Grid size={{ xs: 6, md: 12 }}>
+                <CaseFileMetric label="Injured" value={incident.injuredPersons} alert={incident.injuredPersons > 0} />
+              </Grid>
+              <Grid size={{ xs: 6, md: 12 }}>
+                <CaseFileMetric label="Affected" value={incident.affectedPersons} />
+              </Grid>
+              <Grid size={{ xs: 6, md: 12 }}>
+                <CaseFileMetric
+                  label="Estimated cost"
+                  value={`GHS ${Number(incident.estimatedCost || 0).toLocaleString()}`}
+                />
+              </Grid>
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="overline" color="text.secondary">Impact</Typography>
-              <Typography>Fatalities: {incident.fatalities}</Typography>
-              <Typography>Injured: {incident.injuredPersons}</Typography>
-              <Typography>Affected: {incident.affectedPersons}</Typography>
-              <Typography>Estimated cost: GHS {Number(incident.estimatedCost).toLocaleString()}</Typography>
+          </CaseFileCard>
+        </Grid>
+      </Grid>
+
+      <CaseFileCard title="Immediate response" hint="Scene actions recorded when this report was filed.">
+          <Grid container spacing={1.5} mt={2}>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+              <ResponseTile
+                icon={<ShieldOutlinedIcon />}
+                title="Area secured"
+                done={!!incident.areaSecured}
+                detail={incident.areaSecured ? 'Scene isolated' : 'Not recorded'}
+              />
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Typography variant="overline" color="text.secondary">Location</Typography>
-              <Typography>{incident.region?.name ?? '—'} / {incident.district?.name ?? 'HQ'}</Typography>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+              <ResponseTile
+                icon={<LocalHospitalOutlinedIcon />}
+                title="First aid"
+                done={incident.firstAidOutcome === 'GIVEN' || incident.firstAidOutcome === 'NOT_REQUIRED'}
+                detail={
+                  incident.firstAidOutcome === 'GIVEN'
+                    ? incident.firstAidNotes || 'Given'
+                    : incident.firstAidOutcome === 'NOT_REQUIRED'
+                      ? incident.firstAidNotes
+                        ? `Not required — ${incident.firstAidNotes}`
+                        : 'Not required'
+                      : 'Not recorded'
+                }
+              />
             </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Typography variant="overline" color="text.secondary">Reported by</Typography>
-              <Typography>{incident.reportedBy?.fullName ?? '—'}</Typography>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+              <ResponseTile
+                icon={<SupervisorAccountOutlinedIcon />}
+                title="Supervisor informed"
+                done={!!incident.supervisorInformed}
+                detail={
+                  incident.supervisorInformed
+                    ? incident.supervisorName || 'Yes'
+                    : 'Not recorded'
+                }
+              />
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+              <ResponseTile
+                icon={<PhoneInTalkOutlinedIcon />}
+                title="Emergency services"
+                done={!!incident.emergencyServicesContacted}
+                detail={
+                  incident.emergencyServicesContacted
+                    ? incident.emergencyServicesDetails || 'Contacted'
+                    : 'Not contacted'
+                }
+              />
             </Grid>
           </Grid>
-        </CardContent>
-      </Card>
+          {incident.managementReportSubmittedAt && (
+            <Typography variant="body2" color="text.secondary" mt={2}>
+              Submitted to management {formatWhen(incident.managementReportSubmittedAt)}
+              {incident.managementReportSubmittedBy?.fullName
+                ? ` by ${incident.managementReportSubmittedBy.fullName}`
+                : ''}
+              .
+            </Typography>
+          )}
+      </CaseFileCard>
 
       <PhotoEvidence incident={incident} />
 
@@ -123,28 +196,61 @@ export function IncidentDetailPage() {
   );
 }
 
+function ResponseTile({
+  icon,
+  title,
+  done,
+  detail,
+}: {
+  icon: ReactNode;
+  title: string;
+  done: boolean;
+  detail: string;
+}) {
+  return (
+    <Stack
+      spacing={1}
+      sx={{
+        height: '100%',
+        p: 1.75,
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: done ? 'success.light' : 'divider',
+        bgcolor: done ? 'rgba(46, 125, 50, 0.05)' : 'background.paper',
+      }}
+    >
+      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+        <Box sx={{ color: done ? 'success.main' : 'primary.main', display: 'flex' }}>{icon}</Box>
+        {done ? (
+          <CheckCircleRoundedIcon fontSize="small" color="success" />
+        ) : (
+          <RadioButtonUncheckedRoundedIcon fontSize="small" sx={{ color: 'text.disabled' }} />
+        )}
+      </Stack>
+      <Typography variant="subtitle2" fontWeight={700}>
+        {title}
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        {detail}
+      </Typography>
+    </Stack>
+  );
+}
+
 function PhotoEvidence({ incident }: { incident: IncidentDto }) {
   const photos = (incident.attachments ?? []).filter((a) => a.kind === 'photo');
   if (photos.length === 0) return null;
 
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" fontWeight={700}>
-          Photo evidence
-        </Typography>
-        <Typography variant="body2" color="text.secondary" mb={2}>
-          Photos captured or uploaded with this incident report.
-        </Typography>
-        <Grid container spacing={2}>
-          {photos.map((photo) => (
-            <Grid key={photo.id} size={{ xs: 12, sm: 6, md: 4 }}>
-              <IncidentPhoto incidentId={incident.id} photo={photo} />
-            </Grid>
-          ))}
-        </Grid>
-      </CardContent>
-    </Card>
+    <CaseFileCard title="Photo evidence" hint="Captured or uploaded with this report.">
+      <Grid container spacing={2} mt={2}>
+        {photos.map((photo) => (
+          <Grid key={photo.id} size={{ xs: 12, sm: 6, md: 4 }}>
+            <IncidentPhoto incidentId={incident.id} photo={photo} />
+          </Grid>
+        ))}
+      </Grid>
+    </CaseFileCard>
   );
 }
 
@@ -183,7 +289,8 @@ function IncidentPhoto({
         sx={{
           width: '100%',
           p: 0,
-          border: 0,
+          border: '1px solid',
+          borderColor: 'divider',
           aspectRatio: '4 / 3',
           borderRadius: 2,
           overflow: 'hidden',
@@ -207,7 +314,7 @@ function IncidentPhoto({
           </Typography>
         )}
       </Box>
-      <Typography variant="body2" mt={1} noWrap title={photo.fileName}>
+      <Typography variant="body2" mt={1} noWrap title={photo.fileName} fontWeight={600}>
         {photo.fileName}
       </Typography>
       <Typography variant="caption" color="text.secondary">

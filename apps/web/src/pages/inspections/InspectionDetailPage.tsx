@@ -3,9 +3,20 @@ import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Box, Button, Card, CardContent, Chip, Dialog, DialogContent, Grid2 as Grid, Stack, TextField, Typography } from '@mui/material';
 import { HazardCategory, Permission } from '@ecg-she/shared';
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
+import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined';
 import { endpoints } from '../../api/endpoints';
 import { imageSrcFromBlob } from '../../security/output';
 import { ExportReportButton } from '../../components/ExportReportButton';
+import {
+  CASE_FILE_CARD_SX,
+  CaseFileCard,
+  CaseFileHeader,
+  CaseFileSkeleton,
+  titleCase,
+} from '../../components/case-file';
 import { useAuthStore } from '../../stores/auth.store';
 import { OUTDOOR_INSPECTIONS } from './checklists';
 
@@ -118,33 +129,39 @@ export function InspectionDetailPage() {
     });
   };
 
-  if (record.isLoading) return <Typography>Loading the inspection…</Typography>;
+  if (record.isLoading) return <CaseFileSkeleton />;
   if (!inspection) return <Alert severity="error">Inspection not found</Alert>;
 
   return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={1}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-          <Typography variant="h5" fontWeight={700}>{String(inspection.referenceCode ?? 'Inspection')}</Typography>
-          <Chip label={String(inspection.status ?? '')} color={inspection.status === 'COMPLETED' ? 'success' : 'warning'} />
-          <Chip label={`${inspection.scorePercent ?? 0}%`} variant="outlined" />
-        </Stack>
-        <ExportReportButton filename={`${String(inspection.referenceCode ?? 'inspection')}-report.pdf`} download={() => endpoints.inspectionReport(id)} />
-      </Stack>
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/inspections"
+        backLabel="Inspections"
+        reference={String(inspection.referenceCode ?? 'Inspection')}
+        title={String(inspection.assetOrLocation || titleCase(inspection.type) || 'Inspection')}
+        chips={[
+          { label: titleCase(inspection.status), color: inspection.status === 'COMPLETED' ? 'success' : 'warning' },
+          { label: `${inspection.scorePercent ?? 0}%`, variant: 'outlined' },
+          { label: titleCase(inspection.type), variant: 'outlined' },
+        ]}
+        actions={<ExportReportButton filename={`${String(inspection.referenceCode ?? 'inspection')}-report.pdf`} download={() => endpoints.inspectionReport(id)} />}
+        meta={[
+          { icon: <PlaceOutlinedIcon fontSize="small" />, label: 'Place', value: String(inspection.assetOrLocation || '—') },
+          { icon: <PersonOutlineRoundedIcon fontSize="small" />, label: 'Inspector', value: String(inspection.inspector?.fullName ?? '—') },
+          { icon: <CloudOutlinedIcon fontSize="small" />, label: 'Weather', value: titleCase(inspection.weatherCondition) },
+          { icon: <FactCheckOutlinedIcon fontSize="small" />, label: 'Score', value: `${inspection.scorePercent ?? 0}%` },
+        ]}
+      />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
-      <Card>
-        <CardContent>
-          <Typography variant="body2">Type: {String(inspection.type ?? '').replaceAll('_', ' ')}</Typography>
-          <Typography variant="body2">Place: {String(inspection.assetOrLocation ?? '')}</Typography>
-          <Typography variant="body2">Inspector: {String(inspection.inspector?.fullName ?? '—')}</Typography>
-          {inspection.weatherCondition && <Typography variant="body2">Weather: {String(inspection.weatherCondition).replaceAll('_', ' ')}</Typography>}
-          {inspection.observations && <Typography variant="body2" mt={1}>{String(inspection.observations)}</Typography>}
-        </CardContent>
-      </Card>
+      {inspection.observations && (
+        <CaseFileCard title="Observations">
+          <Typography sx={{ mt: 1.5, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{String(inspection.observations)}</Typography>
+        </CaseFileCard>
+      )}
       <Photos inspectionId={inspection.id} photos={inspection.attachments ?? []} />
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Checklist</Typography>
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Checklist</Typography>
           <Stack spacing={2} mt={2}>
             {items.map((item) => (
               <Stack key={item.question} spacing={1}>
@@ -197,18 +214,15 @@ export function InspectionDetailPage() {
 function Photos({ inspectionId, photos }: { inspectionId: string; photos: NonNullable<InspectionRecord['attachments']> }) {
   if (!photos.length) return null;
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" fontWeight={700}>Photos</Typography>
-        <Grid container spacing={2} mt={0.5}>
+    <CaseFileCard title="Photo evidence">
+      <Grid container spacing={2} mt={2}>
           {photos.map((photo) => (
             <Grid key={photo.id} size={{ xs: 12, sm: 6, md: 4 }}>
               <PhotoThumb inspectionId={inspectionId} photo={photo} />
             </Grid>
           ))}
         </Grid>
-      </CardContent>
-    </Card>
+    </CaseFileCard>
   );
 }
 

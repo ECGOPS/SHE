@@ -19,9 +19,9 @@ import { applyStatus, orderColumn, paginate, searchTerm } from '../../common/pag
 import { assertRecordAccess } from '../auth/access-control';
 import { getCurrentTenantId } from '../../common/context/request-context';
 
-const PUBLISHED = ['POLICY', 'SCOPE', 'OBJECTIVE'];
-const HEAD_OFFICE_ONLY = new Set(['POLICY', 'SCOPE']);
-const DUE_REQUIRED = new Set(['OBJECTIVE', 'EMERGENCY', 'REVIEW']);
+const PUBLISHED = ['POLICY', 'SCOPE', 'OBJECTIVE', 'COMMUNICATION'];
+const HEAD_OFFICE_ONLY = new Set(['POLICY', 'SCOPE', 'CONTEXT']);
+const DUE_REQUIRED = new Set(['OBJECTIVE', 'EMERGENCY', 'REVIEW', 'DOCUMENT', 'MONITORING']);
 
 @Injectable()
 export class ManagementSystemService {
@@ -70,6 +70,21 @@ export class ManagementSystemService {
     if (DUE_REQUIRED.has(dto.kind) && !dto.dueOn) {
       throw new BadRequestException('Record the date this is due or was reviewed');
     }
+    if (dto.kind === 'CONTEXT' && !dto.issueOrigin) {
+      throw new BadRequestException('Record whether this issue is internal or external');
+    }
+    if (dto.kind === 'DOCUMENT') {
+      if (!dto.documentVersion?.trim()) throw new BadRequestException('Record the document version');
+      if (!dto.ownerName?.trim()) throw new BadRequestException('Record who approved or owns this document');
+    }
+    if (dto.kind === 'COMMUNICATION') {
+      if (!dto.audience?.trim()) throw new BadRequestException('Record who this is communicated to');
+      if (!dto.frequency?.trim()) throw new BadRequestException('Record how often this is communicated');
+    }
+    if (dto.kind === 'MONITORING') {
+      if (!dto.frequency?.trim()) throw new BadRequestException('Record how often this is measured');
+      if (!dto.ownerName?.trim()) throw new BadRequestException('Record who reviews the measurement');
+    }
     const scoped = this.scope.enforceWriteScope(user, {
       regionId: dto.regionId ?? user.regionId ?? null,
       districtId: dto.districtId ?? user.districtId ?? null,
@@ -90,6 +105,11 @@ export class ManagementSystemService {
         dueOn: dto.dueOn ? new Date(dto.dueOn) : null,
         complianceResult: dto.kind === 'OBLIGATION' ? dto.complianceResult ?? null : null,
         significant: dto.kind === 'ASPECT' && dto.significant === true,
+        issueOrigin: dto.kind === 'CONTEXT' ? dto.issueOrigin ?? null : null,
+        documentVersion: dto.kind === 'DOCUMENT' ? dto.documentVersion?.trim() || null : null,
+        documentStatus: dto.kind === 'DOCUMENT' ? dto.documentStatus ?? 'DRAFT' : null,
+        audience: dto.kind === 'COMMUNICATION' ? dto.audience?.trim() || null : null,
+        frequency: dto.kind === 'COMMUNICATION' || dto.kind === 'MONITORING' ? dto.frequency?.trim() || null : null,
         status: 'OPEN',
         referenceCode: await this.nextReference(region.code, districtCode),
       }),
@@ -107,10 +127,17 @@ export class ManagementSystemService {
     if (HEAD_OFFICE_ONLY.has(record.kind) && !isGlobalScope(user.role)) {
       throw new ForbiddenException('Head Office updates the policy and the scope');
     }
+    const documentStatus =
+      record.kind === 'DOCUMENT' && dto.documentStatus
+        ? dto.documentStatus
+        : record.kind === 'DOCUMENT' && dto.status === 'CLOSED'
+          ? 'SUPERSEDED'
+          : undefined;
     await this.records.update(record.id, {
       ...(dto.status ? { status: dto.status } : {}),
       ...(dto.description ? { description: dto.description.trim() } : {}),
       ...(record.kind === 'OBLIGATION' && dto.complianceResult ? { complianceResult: dto.complianceResult } : {}),
+      ...(documentStatus ? { documentStatus } : {}),
     });
     return this.records.findOneOrFail({ where: { id }, relations: ['region', 'district'] });
   }
@@ -119,11 +146,16 @@ export class ManagementSystemService {
     const tenantId = getCurrentTenantId();
     if (tenantId) qb.andWhere('m.tenantId = :tenantId', { tenantId });
     if (reportsInChosenPlace(user.role)) {
-      qb.andWhere('(m.kind IN (:...published) OR (m.kind = :consultation AND m.createdBy = :me))', {
-        published: PUBLISHED,
-        consultation: 'CONSULTATION',
-        me: user.id,
-      });
+      qb.andWhere(
+        '(m.kind IN (:...published) OR (m.kind = :consultation AND m.createdBy = :me) OR (m.kind = :document AND m.documentStatus = :current))',
+        {
+          published: PUBLISHED,
+          consultation: 'CONSULTATION',
+          me: user.id,
+          document: 'DOCUMENT',
+          current: 'CURRENT',
+        },
+      );
       return;
     }
     if (isGlobalScope(user.role)) return;

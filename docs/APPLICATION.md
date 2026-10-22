@@ -29,7 +29,7 @@ The web application runs in the browser at `http://localhost:5173` in local deve
 | Occupational health | `/health` | Safety officers and Head Office |
 | Training | `/training` | Safety officers and Head Office |
 | PPE | `/ppe` | Safety officers and Head Office |
-| Audit trail | `/audit-trail` | Head Office safety officer, Head Office staff, system administrator |
+| Audit trail | `/audit-trail` | Head Office safety officer, system administrator |
 | Administration | `/admin` | System administrator |
 
 Staff land on Incidents. Officers land on the Dashboard.
@@ -44,14 +44,15 @@ A role decides two things: the job the person may do, and the part of ECG they m
 | --- | --- | --- | --- |
 | `SYS_ADMIN` | System administrator | Whole organisation | Users, places, every module |
 | `GLOBAL_SAFETY_OFFICER` | Head Office safety officer | Whole organisation | Approve and close, national registers, audit trail |
-| `GLOBAL_USER` | Head Office staff | Whole organisation | Read the registers and reports |
+| `HEAD_OFFICE_SHE` | Head Office SHE | Whole organisation | Same as Head Office safety officer |
+| `GLOBAL_USER` | Head Office staff | The place chosen on each report | Report incidents like regional and district staff |
 | `REGIONAL_SAFETY_OFFICER` | Regional safety officer | One region | Investigate, approve, and manage that region |
 | `REGIONAL_USER` | Regional staff | One region, and any place they choose when reporting | Report incidents and related records |
 | `DISTRICT_SAFETY_OFFICER` | District safety officer | One district | Investigate and assign inside that district |
 | `DISTRICT_USER` | District staff | One district, and any place they choose when reporting | Report incidents and related records |
 | `STAFF` | Staff | The place chosen on each report | Report incidents, hazards, near misses, JSA, permits, inspections, and environmental events |
 
-Staff, district staff, and regional staff pick the region and district on the report. Safety officers stay inside the place an administrator assigned.
+Staff, Head Office staff, district staff, and regional staff pick the region and district on the report. Safety officers stay inside the place an administrator assigned. Only Head Office safety and the administrator see every region.
 
 A person only receives a record that belongs to their place, or a record they own. Asking for someone else’s record returns “not found”, so the response does not reveal that the record exists. Changing a role, disabling an account, or locking an account after repeated bad passwords revokes that person’s sessions.
 
@@ -228,6 +229,7 @@ These accounts exist only for development. Change them before anyone else can re
 | Regional staff | `accra.east@ecg.com.gh`, `accra.west@ecg.com.gh`, and one account per other region | `Region@123` |
 | District staff | `makola@ecg.com.gh`, `adum@ecg.com.gh` | `District@123` |
 | Head Office safety officer | `she.global@ecg.com.gh` | `Safety@123` |
+| Head Office SHE | `she.ho@ecg.com.gh` | `Safety@123` |
 | Regional safety officer | `she.<region>@ecg.com.gh`, for example `she.aw@ecg.com.gh` | `Safety@123` |
 | District safety officer | `she.<region>.<district>@ecg.com.gh`, for example `she.aw.abl@ecg.com.gh` | `Safety@123` |
 

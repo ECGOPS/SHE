@@ -37,4 +37,19 @@ export class ManagementRecord extends ScopedEntity {
 
   @Column({ type: 'boolean', default: false })
   significant!: boolean;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  issueOrigin?: string | null;
+
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  documentVersion?: string | null;
+
+  @Column({ type: 'varchar', length: 16, nullable: true })
+  documentStatus?: string | null;
+
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  audience?: string | null;
+
+  @Column({ type: 'varchar', length: 80, nullable: true })
+  frequency?: string | null;
 }

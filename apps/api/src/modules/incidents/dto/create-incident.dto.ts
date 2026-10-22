@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsIn,
@@ -53,6 +54,26 @@ export class CreateIncidentDto {
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) injuredPersons?: number;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(0) fatalities?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) estimatedCost?: number;
+
+  @ApiProperty({ description: 'The area was secured before this report was filed' })
+  @IsBoolean()
+  areaSecured!: boolean;
+
+  @ApiProperty({ enum: ['GIVEN', 'NOT_REQUIRED'] })
+  @IsIn(['GIVEN', 'NOT_REQUIRED'])
+  firstAidOutcome!: 'GIVEN' | 'NOT_REQUIRED';
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(4000) firstAidNotes?: string;
+
+  @ApiProperty({ description: 'The supervisor or safety officer was informed' })
+  @IsBoolean()
+  supervisorInformed!: boolean;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(256) supervisorName?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() emergencyServicesContacted?: boolean;
+
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(256) emergencyServicesDetails?: string;
 
   @ApiPropertyOptional({ type: [WitnessInputDto] })
   @IsOptional()

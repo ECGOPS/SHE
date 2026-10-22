@@ -350,6 +350,13 @@ function safetyOfficerAccounts(): UserSeed[] {
       role: Role.GLOBAL_SAFETY_OFFICER,
       jobTitle: 'Safety Officer',
     },
+    {
+      email: 'she.ho@ecg.com.gh',
+      fullName: 'Head Office SHE',
+      password: SAFETY_OFFICER_PASSWORD,
+      role: Role.HEAD_OFFICE_SHE,
+      jobTitle: 'SHE',
+    },
   ];
 
   for (const region of REGIONS) {

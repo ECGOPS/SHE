@@ -1,7 +1,7 @@
 import { FormEvent, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Alert, Button, Card, CardContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Button, Card, CardContent, Checkbox, FormControlLabel, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { isDistrictScope, isRegionalScope, isSafetyOfficer } from '@ecg-she/shared';
 import { endpoints } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
@@ -27,6 +27,8 @@ export function CapaNewPage() {
   const [priority, setPriority] = useState('MEDIUM');
   const [dueDate, setDueDate] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
+  const [protocolUpdateRequired, setProtocolUpdateRequired] = useState(false);
+  const [protocolUpdateNotes, setProtocolUpdateNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const regions = useQuery({ queryKey: ['regions'], queryFn: endpoints.regions });
   const districts = useQuery({ queryKey: ['districts', regionId], queryFn: () => endpoints.districts(regionId), enabled: !!regionId });
@@ -43,6 +45,8 @@ export function CapaNewPage() {
       regionId,
       districtId: districtId || undefined,
       sourceType: 'INTERNAL_REVIEW',
+      protocolUpdateRequired,
+      protocolUpdateNotes: protocolUpdateRequired ? protocolUpdateNotes.trim() || undefined : undefined,
     }),
     onSuccess: (row) => navigate(`/capa/${row.id}`),
     onError: (err) => setError(errorMessage(err)),
@@ -86,6 +90,26 @@ export function CapaNewPage() {
               <TextField label="Due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} required fullWidth InputLabelProps={{ shrink: true }} />
             </Stack>
             <SupervisorField label="Owner" people={people.data ?? []} value={assigneeId} onChange={setAssigneeId} helperText="The owner does the work. A different officer checks it." />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={protocolUpdateRequired}
+                  onChange={(_, checked) => setProtocolUpdateRequired(checked)}
+                />
+              }
+              label="A procedure, JSA, or other protocol must be updated"
+            />
+            {protocolUpdateRequired && (
+              <TextField
+                label="Which protocol and what must change"
+                value={protocolUpdateNotes}
+                onChange={(e) => setProtocolUpdateNotes(e.target.value)}
+                required
+                multiline
+                minRows={2}
+                fullWidth
+              />
+            )}
             <Button type="submit" variant="contained" disabled={save.isPending}>Save action</Button>
           </Stack>
         </CardContent>

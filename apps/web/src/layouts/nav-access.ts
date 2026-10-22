@@ -4,13 +4,12 @@ import { Role } from '@ecg-she/shared';
  * Who may open each area of the app.
  *
  * A reporter records what they saw. A safety officer works the case.
- * Head Office staff read the registers. The system administrator sees everything.
+ * Head Office staff report like regional and district staff. Head Office safety sees everything.
  */
-const REPORTER: Role[] = [Role.STAFF, Role.DISTRICT_USER, Role.REGIONAL_USER];
+const REPORTER: Role[] = [Role.STAFF, Role.DISTRICT_USER, Role.REGIONAL_USER, Role.GLOBAL_USER];
 const DISTRICT_OFFICER: Role[] = [Role.DISTRICT_SAFETY_OFFICER];
 const REGIONAL_OFFICER: Role[] = [Role.REGIONAL_SAFETY_OFFICER];
-const HEAD_OFFICE_OFFICER: Role[] = [Role.GLOBAL_SAFETY_OFFICER];
-const HEAD_OFFICE_STAFF: Role[] = [Role.GLOBAL_USER];
+const HEAD_OFFICE_OFFICER: Role[] = [Role.GLOBAL_SAFETY_OFFICER, Role.HEAD_OFFICE_SHE];
 const ADMIN: Role[] = [Role.SYS_ADMIN];
 
 /** Incidents, hazards, near-miss, JSA and permits: report, investigate, or review. */
@@ -19,38 +18,34 @@ const CASES: Role[] = [
   ...DISTRICT_OFFICER,
   ...REGIONAL_OFFICER,
   ...HEAD_OFFICE_OFFICER,
-  ...HEAD_OFFICE_STAFF,
   ...ADMIN,
 ];
 
-/** Officers inspect the network. Crew record a vehicle or PPE check. Head Office reviews. */
+/** Officers inspect the network. Crew record a vehicle or PPE check. Head Office safety reviews. */
 const INSPECTIONS: Role[] = [
   ...DISTRICT_OFFICER,
   ...REGIONAL_OFFICER,
   ...HEAD_OFFICE_OFFICER,
-  ...HEAD_OFFICE_STAFF,
   ...ADMIN,
 ];
 
-/** The management picture: safety officers, Head Office, and the system administrator. */
+/** The management picture: safety officers and the system administrator. */
 const DASHBOARD: Role[] = [
   ...DISTRICT_OFFICER,
   ...REGIONAL_OFFICER,
   ...HEAD_OFFICE_OFFICER,
-  ...HEAD_OFFICE_STAFF,
   ...ADMIN,
 ];
 
-/** Audits and organisation reports sit with the region and Head Office. */
+/** Audits and organisation reports sit with the region and Head Office safety. */
 const REGION_AND_HEAD_OFFICE: Role[] = [
   ...REGIONAL_OFFICER,
   ...HEAD_OFFICE_OFFICER,
-  ...HEAD_OFFICE_STAFF,
   ...ADMIN,
 ];
 
-/** Training, PPE, occupational health and the audit trail are Head Office duties. */
-const HEAD_OFFICE: Role[] = [...HEAD_OFFICE_OFFICER, ...HEAD_OFFICE_STAFF, ...ADMIN];
+/** Training, PPE, occupational health and the audit trail are Head Office safety duties. */
+const HEAD_OFFICE: Role[] = [...HEAD_OFFICE_OFFICER, ...ADMIN];
 
 export const NAV_ROLES: Record<string, Role[]> = {
   '/dashboard': DASHBOARD,

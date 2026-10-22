@@ -1,7 +1,13 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsDateString, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
-import { COMPLIANCE_RESULT, MANAGEMENT_RECORD_KIND, MANAGEMENT_STANDARD } from '@ecg-she/shared';
+import {
+  COMPLIANCE_RESULT,
+  DOCUMENT_STATUS,
+  ISSUE_ORIGIN,
+  MANAGEMENT_RECORD_KIND,
+  MANAGEMENT_STANDARD,
+} from '@ecg-she/shared';
 import { PaginationQueryDto } from '../../../common/dto/pagination.dto';
 
 export class ManagementQueryDto extends PaginationQueryDto {
@@ -69,6 +75,34 @@ export class CreateManagementRecordDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   significant?: boolean;
+
+  @ApiPropertyOptional({ enum: ISSUE_ORIGIN })
+  @IsOptional()
+  @IsIn(ISSUE_ORIGIN)
+  issueOrigin?: (typeof ISSUE_ORIGIN)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  documentVersion?: string;
+
+  @ApiPropertyOptional({ enum: DOCUMENT_STATUS })
+  @IsOptional()
+  @IsIn(DOCUMENT_STATUS)
+  documentStatus?: (typeof DOCUMENT_STATUS)[number];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  audience?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  frequency?: string;
 }
 
 export class UpdateManagementRecordDto {
@@ -88,4 +122,9 @@ export class UpdateManagementRecordDto {
   @MinLength(10)
   @MaxLength(4000)
   description?: string;
+
+  @ApiPropertyOptional({ enum: DOCUMENT_STATUS })
+  @IsOptional()
+  @IsIn(DOCUMENT_STATUS)
+  documentStatus?: (typeof DOCUMENT_STATUS)[number];
 }

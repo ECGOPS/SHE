@@ -18,6 +18,8 @@ import { Inspection } from '../inspections/entities/inspection.entity';
 import { AuditFinding } from '../audits/entities/audit-finding.entity';
 import { AuditRecord } from '../audits/entities/audit-record.entity';
 import { EnvironmentalEvent } from '../environmental/entities/environmental-event.entity';
+import { JsaRecord } from '../jsa/entities/jsa.entity';
+import { ManagementRecord } from '../management-system/entities/management-record.entity';
 import { applyStatus, orderColumn, paginate, searchTerm } from '../../common/pagination';
 import { renderSheReport, reportFilename } from '../../common/pdf/she-report';
 import { capaReport } from '../../common/pdf/record-reports';
@@ -37,6 +39,8 @@ export class CorrectiveActionsService {
     @InjectRepository(AuditFinding) private readonly findings: Repository<AuditFinding>,
     @InjectRepository(AuditRecord) private readonly audits: Repository<AuditRecord>,
     @InjectRepository(EnvironmentalEvent) private readonly environmental: Repository<EnvironmentalEvent>,
+    @InjectRepository(JsaRecord) private readonly jsas: Repository<JsaRecord>,
+    @InjectRepository(ManagementRecord) private readonly management: Repository<ManagementRecord>,
     private readonly scope: RbacScopeService,
     private readonly orgs: OrganizationsService,
     private readonly realtime: RealtimeGateway,
@@ -100,7 +104,10 @@ export class CorrectiveActionsService {
       query.sortDir === 'DESC' ? 'DESC' : 'ASC',
     );
     const page = await paginate(qb, query);
-    const items = await Promise.all(page.items.map(async (row) => Object.assign(row, { sourceHref: await this.sourceHref(row) })));
+    const items = await Promise.all(page.items.map(async (row) => Object.assign(row, {
+      sourceHref: await this.sourceHref(row),
+      protocolHref: this.protocolHref(row),
+    })));
     return { ...page, items };
   }
 
@@ -114,7 +121,7 @@ export class CorrectiveActionsService {
     this.scope.applyScopeFilter(qb, user, 'c');
     const a = await qb.getOne();
     if (!a) throw new NotFoundException('Corrective action not found');
-    return Object.assign(a, { sourceHref: await this.sourceHref(a) });
+    return Object.assign(a, { sourceHref: await this.sourceHref(a), protocolHref: this.protocolHref(a) });
   }
 
   async reportPdf(user: AuthUser, id: string): Promise<{ buffer: Buffer; filename: string }> {
@@ -136,6 +143,12 @@ export class CorrectiveActionsService {
     if (dto.rootCauseMethod) action.rootCauseMethod = dto.rootCauseMethod;
     if (dto.rootCauseStatement?.trim()) action.rootCauseStatement = dto.rootCauseStatement.trim();
     if (dto.evidenceNotes?.trim()) action.evidenceNotes = dto.evidenceNotes.trim();
+    if (dto.protocolUpdateRequired !== undefined) action.protocolUpdateRequired = dto.protocolUpdateRequired;
+    if (dto.protocolUpdateNotes !== undefined) {
+      action.protocolUpdateNotes = dto.protocolUpdateNotes.trim() || null;
+    }
+    if (dto.protocolLinkKind !== undefined) action.protocolLinkKind = dto.protocolLinkKind;
+    if (dto.protocolLinkId !== undefined) action.protocolLinkId = dto.protocolLinkId;
     if (dto.status === 'IN_PROGRESS') {
       action.status = CorrectiveActionStatus.IN_PROGRESS;
     }
@@ -146,6 +159,15 @@ export class CorrectiveActionsService {
       if (!action.evidenceNotes?.trim()) throw new BadRequestException('Record what was done');
       if (NEEDS_CAUSE.has(action.actionType) && (!action.rootCauseMethod || !action.rootCauseStatement?.trim())) {
         throw new BadRequestException('Record the cause before this action is checked');
+      }
+      if (action.protocolUpdateRequired) {
+        if (!action.protocolUpdateNotes?.trim()) {
+          throw new BadRequestException('Record which protocol, JSA, or procedure was updated');
+        }
+        if (!action.protocolLinkKind || !action.protocolLinkId) {
+          throw new BadRequestException('Link the controlled document, JSA, hazard, or change record that was updated');
+        }
+        await this.assertProtocolLink(user, action.protocolLinkKind, action.protocolLinkId);
       }
       action.status = CorrectiveActionStatus.VERIFICATION;
       action.completedAt = new Date();
@@ -168,6 +190,15 @@ export class CorrectiveActionsService {
     if (dto.effectivenessOutcome === 'EFFECTIVE') {
       action.status = CorrectiveActionStatus.CLOSED;
       action.closedAt = new Date();
+      if (action.protocolLinkKind === 'DOCUMENT' && action.protocolLinkId) {
+        await this.management.update(
+          { id: action.protocolLinkId, kind: 'DOCUMENT' },
+          { documentStatus: 'CURRENT' },
+        );
+      }
+      if (action.protocolLinkKind === 'CHANGE' && action.protocolLinkId) {
+        await this.management.update({ id: action.protocolLinkId, kind: 'CHANGE' }, { status: 'CLOSED' });
+      }
     } else {
       action.status = CorrectiveActionStatus.IN_PROGRESS;
       action.completedAt = null;
@@ -254,6 +285,38 @@ export class CorrectiveActionsService {
     if (!person) throw new BadRequestException('Choose a person from the list');
     if (!isGlobalScope(user.role) && person.regionId && person.regionId !== user.regionId) {
       throw new BadRequestException('That person is outside your region');
+    }
+  }
+
+  private protocolHref(action: CorrectiveAction): string | null {
+    if (!action.protocolLinkKind || !action.protocolLinkId) return null;
+    if (action.protocolLinkKind === 'HAZARD') return `/hazards/${action.protocolLinkId}`;
+    if (action.protocolLinkKind === 'JSA') return `/jsa/${action.protocolLinkId}`;
+    return '/management';
+  }
+
+  private async assertProtocolLink(user: AuthUser, kind: string, id: string): Promise<void> {
+    if (kind === 'HAZARD') {
+      const row = await this.hazards.findOne({ where: { id } });
+      if (!row) throw new BadRequestException('That hazard was not found');
+      if (!isGlobalScope(user.role) && row.regionId !== user.regionId) {
+        throw new BadRequestException('That hazard is outside your region');
+      }
+      return;
+    }
+    if (kind === 'JSA') {
+      const row = await this.jsas.findOne({ where: { id } });
+      if (!row) throw new BadRequestException('That JSA was not found');
+      if (!isGlobalScope(user.role) && row.regionId !== user.regionId) {
+        throw new BadRequestException('That JSA is outside your region');
+      }
+      return;
+    }
+    const expectedKind = kind === 'CHANGE' ? 'CHANGE' : 'DOCUMENT';
+    const row = await this.management.findOne({ where: { id, kind: expectedKind } });
+    if (!row) throw new BadRequestException('That management record was not found');
+    if (!isGlobalScope(user.role) && row.regionId !== user.regionId) {
+      throw new BadRequestException('That record is outside your region');
     }
   }
 

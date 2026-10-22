@@ -52,6 +52,15 @@ export interface IncidentDto {
   injuredPersons: number;
   affectedPersons: number;
   estimatedCost: number;
+  areaSecured?: boolean;
+  firstAidOutcome?: 'GIVEN' | 'NOT_REQUIRED' | null;
+  firstAidNotes?: string | null;
+  supervisorInformed?: boolean;
+  supervisorName?: string | null;
+  emergencyServicesContacted?: boolean;
+  emergencyServicesDetails?: string | null;
+  managementReportSubmittedAt?: string | null;
+  managementReportSubmittedBy?: { id: string; fullName: string } | null;
   region?: RegionDto;
   district?: DistrictDto;
   reportedBy?: { id: string; fullName: string; email: string };

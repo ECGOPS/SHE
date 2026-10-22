@@ -55,6 +55,38 @@ export class Incident extends ScopedEntity {
   @Column({ type: 'int', default: 0 })
   fatalities!: number;
 
+  /** Scene actions from the reporting workflow — recorded after they were done. */
+  @Column({ type: 'boolean', default: false })
+  areaSecured!: boolean;
+
+  @Column({ type: 'varchar', length: 24, nullable: true })
+  firstAidOutcome?: 'GIVEN' | 'NOT_REQUIRED' | null;
+
+  @Column({ type: 'text', nullable: true })
+  firstAidNotes?: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  supervisorInformed!: boolean;
+
+  @Column({ type: 'varchar', length: 256, nullable: true })
+  supervisorName?: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  emergencyServicesContacted!: boolean;
+
+  @Column({ type: 'varchar', length: 256, nullable: true })
+  emergencyServicesDetails?: string | null;
+
+  @Column({ type: 'datetime', nullable: true })
+  managementReportSubmittedAt?: Date | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  managementReportSubmittedById?: string | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'managementReportSubmittedById' })
+  managementReportSubmittedBy?: User | null;
+
   @Column({ type: 'decimal', precision: 14, scale: 2, default: 0 })
   estimatedCost!: number;
 

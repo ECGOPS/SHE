@@ -5,7 +5,9 @@
 | Role            | Hierarchy | Default permissions                                |
 | --------------- | --------- | -------------------------------------------------- |
 | `SYS_ADMIN`     | 100       | Everything                                         |
-| `GLOBAL_USER`   | 75        | Read all + national reports + audit trail          |
+| `GLOBAL_SAFETY_OFFICER` | 80 | Approve and close nationwide                       |
+| `HEAD_OFFICE_SHE` | 79      | Same as Head Office safety officer                 |
+| `GLOBAL_USER`   | 75        | Report like other staff; own records only          |
 | `REGIONAL_USER` | 50        | Read & write within region; approve incidents/JSAs |
 | `DISTRICT_USER` | 25        | Read & write within district                        |
 

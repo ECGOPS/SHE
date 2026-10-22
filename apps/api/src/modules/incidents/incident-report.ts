@@ -67,18 +67,55 @@ export function buildIncidentReport(input: IncidentReportInput): Promise<Buffer>
       incident.investigator?.fullName ?? 'Not assigned',
     );
 
-    section(doc, '2. What happened');
+    section(doc, '2. Immediate response');
+    pair(
+      doc,
+      'Area secured',
+      incident.areaSecured ? 'Yes' : 'Not recorded',
+      'First aid',
+      incident.firstAidOutcome === 'GIVEN'
+        ? 'Given'
+        : incident.firstAidOutcome === 'NOT_REQUIRED'
+          ? 'Not required'
+          : 'Not recorded',
+    );
+    pair(
+      doc,
+      'Supervisor informed',
+      incident.supervisorInformed
+        ? incident.supervisorName
+          ? `Yes — ${incident.supervisorName}`
+          : 'Yes'
+        : 'Not recorded',
+      'Emergency services',
+      incident.emergencyServicesContacted
+        ? incident.emergencyServicesDetails || 'Contacted'
+        : 'Not contacted',
+    );
+    if (incident.firstAidNotes) prose(doc, `First aid notes: ${incident.firstAidNotes}`);
+    if (incident.managementReportSubmittedAt) {
+      prose(
+        doc,
+        `Submitted to management ${when(incident.managementReportSubmittedAt)}${
+          incident.managementReportSubmittedBy?.fullName
+            ? ` by ${incident.managementReportSubmittedBy.fullName}`
+            : ''
+        }.`,
+      );
+    }
+
+    section(doc, '3. What happened');
     prose(doc, incident.title, true);
     prose(doc, incident.description);
 
-    section(doc, '3. Place and people');
+    section(doc, '4. Place and people');
     pair(doc, 'Region', incident.region?.name ?? '—', 'District', incident.district?.name ?? 'Head office');
     pair(doc, 'Location', incident.locationName ?? '—', 'Reported by', incident.reportedBy?.fullName ?? '—');
     if (incident.latitude != null && incident.longitude != null) {
       prose(doc, `Coordinates: ${incident.latitude.toFixed(5)}, ${incident.longitude.toFixed(5)}`);
     }
 
-    section(doc, '4. Impact');
+    section(doc, '5. Impact');
     pair(doc, 'Fatalities', String(incident.fatalities ?? 0), 'Injured', String(incident.injuredPersons ?? 0));
     pair(
       doc,
@@ -88,7 +125,7 @@ export function buildIncidentReport(input: IncidentReportInput): Promise<Buffer>
       `GHS ${Number(incident.estimatedCost ?? 0).toLocaleString('en-GB')}`,
     );
 
-    section(doc, '5. Witness statements');
+    section(doc, '6. Witness statements');
     const witnesses = [...(incident.witnesses ?? [])].sort((a, b) => stamp(a.createdAt) - stamp(b.createdAt));
     if (!witnesses.length) prose(doc, 'No witness statements recorded.');
     witnesses.forEach((witness, index) => {
@@ -98,7 +135,7 @@ export function buildIncidentReport(input: IncidentReportInput): Promise<Buffer>
       prose(doc, witness.statement);
     });
 
-    section(doc, '6. Findings');
+    section(doc, '7. Findings');
     const findings = [...(incident.findings ?? [])].sort((a, b) => stamp(a.createdAt) - stamp(b.createdAt));
     if (!findings.length) prose(doc, 'No findings recorded.');
     findings.forEach((finding, index) => {
@@ -108,7 +145,7 @@ export function buildIncidentReport(input: IncidentReportInput): Promise<Buffer>
       if (finding.recommendation) prose(doc, `Recommendation: ${finding.recommendation}`);
     });
 
-    section(doc, '7. Corrective actions');
+    section(doc, '8. Corrective actions');
     if (!actions.length) prose(doc, 'No corrective action has been raised from this incident.');
     actions.forEach((action, index) => {
       ensure(doc, 64);
@@ -123,9 +160,12 @@ export function buildIncidentReport(input: IncidentReportInput): Promise<Buffer>
       );
       prose(doc, `Owner: ${action.assignee?.fullName ?? 'Not assigned'}`);
       prose(doc, action.description);
+      if (action.protocolUpdateRequired) {
+        prose(doc, `Protocol update: ${action.protocolUpdateNotes || 'Required — notes not yet recorded.'}`);
+      }
     });
 
-    section(doc, '8. Escalation');
+    section(doc, '9. Escalation');
     if (!history.length) {
       prose(doc, `The case is still at ${scopeLabel(incident.currentScope)}. No transition has been recorded.`);
     }
@@ -139,7 +179,7 @@ export function buildIncidentReport(input: IncidentReportInput): Promise<Buffer>
       prose(doc, `By ${row.fromUser?.fullName ?? 'a safety officer'}. ${row.reason}`);
     });
 
-    section(doc, '9. Resolution');
+    section(doc, '10. Resolution');
     if (!incident.resolvedAt) {
       prose(doc, 'This incident is still open.');
     } else {
@@ -147,7 +187,7 @@ export function buildIncidentReport(input: IncidentReportInput): Promise<Buffer>
       prose(doc, incident.resolutionNotes ?? 'No resolution notes recorded.');
     }
 
-    section(doc, '10. Photographs');
+    section(doc, '11. Photographs');
     const photos = (incident.attachments ?? []).filter((file) => file.kind === 'photo');
     if (!photos.length) prose(doc, 'No photographs are attached to this incident.');
     for (const photo of photos) {

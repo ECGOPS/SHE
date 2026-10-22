@@ -180,6 +180,12 @@ export function capaReport(row: CorrectiveAction, preparedBy: string): SheReport
           { kind: 'text', text: row.rootCauseStatement ? `Cause: ${row.rootCauseStatement}` : 'No root cause recorded.' },
           { kind: 'text', text: row.evidenceNotes ? `Evidence: ${row.evidenceNotes}` : 'No evidence notes recorded.' },
           { kind: 'text', text: row.effectivenessNotes ? `Review: ${row.effectivenessNotes}` : 'No effectiveness review recorded.' },
+          {
+            kind: 'text',
+            text: row.protocolUpdateRequired
+              ? `Protocol update (${words(row.protocolLinkKind) || 'not linked'}): ${row.protocolUpdateNotes || 'Required — notes not yet recorded.'}`
+              : 'No protocol or procedure update required.',
+          },
         ],
       },
     ],

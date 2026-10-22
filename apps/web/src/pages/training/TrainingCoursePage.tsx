@@ -2,11 +2,22 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Alert, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
 import { Permission } from '@ecg-she/shared';
+import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
+import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import { endpoints } from '../../api/endpoints';
+import {
+  CASE_FILE_CARD_SX,
+  CaseFileCard,
+  CaseFileHeader,
+  CaseFileSkeleton,
+  titleCase,
+} from '../../components/case-file';
 import { useAuthStore } from '../../stores/auth.store';
 
 function words(value: unknown): string {
-  return String(value ?? '').replaceAll('_', ' ');
+  return titleCase(String(value ?? ''));
 }
 
 interface Attendee {
@@ -37,31 +48,34 @@ export function TrainingCoursePage() {
     accreditationBody?: string | null;
     attendees?: Attendee[];
   } | undefined;
-  if (course.isLoading) return <Alert severity="info">Loading the course...</Alert>;
+  if (course.isLoading) return <CaseFileSkeleton />;
   if (!data) return <Alert severity="error">Course not found</Alert>;
   return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
-        <Stack spacing={0.5}>
-          <Typography variant="h5" fontWeight={700}>{data.code}</Typography>
-          <Typography variant="h6">{data.title}</Typography>
-        </Stack>
-        {canManage && <Button variant="contained" onClick={() => navigate(`/training/classes/new?courseId=${id}`)}>Record a class</Button>}
-      </Stack>
-      <Card>
-        <CardContent>
-          <Typography variant="body2">Category: {words(data.category)}</Typography>
-          <Typography variant="body2">Hours: {data.durationHours}</Typography>
-          <Typography variant="body2">Valid for: {data.validForMonths ? `${data.validForMonths} months` : 'Does not expire'}</Typography>
-          <Typography variant="body2">Authorizes: {data.authorizesDuty ? words(data.authorizesDuty) : 'No job authorization'}</Typography>
-          {data.trainerQualification && <Typography variant="body2">Trainer must hold: {data.trainerQualification}</Typography>}
-          {data.accreditationBody && <Typography variant="body2">Accredited by: {data.accreditationBody}</Typography>}
-          {data.description && <Typography variant="body2" mt={1}>{data.description}</Typography>}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Who attended</Typography>
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/training"
+        backLabel="Training"
+        reference={data.code}
+        title={data.title || 'Course'}
+        chips={[{ label: words(data.category), variant: 'outlined' }]}
+        actions={canManage ? <Button variant="contained" onClick={() => navigate(`/training/classes/new?courseId=${id}`)}>Record a class</Button> : undefined}
+        meta={[
+          { icon: <CategoryOutlinedIcon fontSize="small" />, label: 'Category', value: words(data.category) },
+          { icon: <ScheduleOutlinedIcon fontSize="small" />, label: 'Hours', value: String(data.durationHours ?? '—') },
+          { icon: <WorkspacePremiumOutlinedIcon fontSize="small" />, label: 'Valid for', value: data.validForMonths ? `${data.validForMonths} months` : 'Does not expire' },
+          { icon: <BadgeOutlinedIcon fontSize="small" />, label: 'Authorizes', value: data.authorizesDuty ? words(data.authorizesDuty) : 'No job authorization' },
+        ]}
+      />
+      {(data.description || data.trainerQualification || data.accreditationBody) && (
+        <CaseFileCard title="Course">
+          {data.description && <Typography sx={{ mt: 1.5, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>{data.description}</Typography>}
+          {data.trainerQualification && <Typography variant="body2" mt={1.5}>Trainer must hold: {data.trainerQualification}</Typography>}
+          {data.accreditationBody && <Typography variant="body2" mt={1}>Accredited by: {data.accreditationBody}</Typography>}
+        </CaseFileCard>
+      )}
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Who attended</Typography>
           {!data.attendees?.length && <Alert severity="info" sx={{ mt: 1 }}>No class has been recorded for this course.</Alert>}
           <Stack spacing={1} mt={1}>
             {(data.attendees ?? []).map((person) => (

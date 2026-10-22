@@ -17,7 +17,7 @@ describe('ScopeGuard', () => {
   const reflector = new Reflector();
   const guard = new ScopeGuard(reflector);
 
-  it('allows global users to act on any region', () => {
+  it('allows Head Office staff to report in any region', () => {
     const user = {
       id: 'u1',
       role: Role.GLOBAL_USER,
@@ -25,7 +25,7 @@ describe('ScopeGuard', () => {
       districtId: null,
       permissions: [],
     };
-    expect(guard.canActivate(ctxFor(user, { regionId: 'R1' }))).toBe(true);
+    expect(guard.canActivate(ctxFor(user, { regionId: 'R1', districtId: 'D1' }))).toBe(true);
   });
 
   it('allows district staff to report in another district', () => {

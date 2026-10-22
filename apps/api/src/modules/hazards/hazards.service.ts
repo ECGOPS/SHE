@@ -9,13 +9,16 @@ import {
   EscalationEntityType,
   classifyRisk,
   computeRiskScore,
+  HEAD_OFFICE_OFFICER_ROLES,
   isDistrictScope,
+  issueScopeForPlace,
   issueScopeForRole,
   PaginatedResult,
   Permission,
   RiskLikelihood,
   RiskSeverity,
   Role,
+  SAFETY_OFFICER_ROLES,
 } from '@ecg-she/shared';
 import { Hazard } from './entities/hazard.entity';
 import { HazardAttachment } from './entities/hazard-attachment.entity';
@@ -110,7 +113,7 @@ export class HazardsService {
       residualRiskScore,
       peopleExposed: dto.peopleExposed === true,
       targetCompletionDate: dto.targetCompletionDate ? new Date(dto.targetCompletionDate) : null,
-      currentScope: issueScopeForRole(user.role),
+      currentScope: issueScopeForPlace(scoped),
       status: 'OPEN',
     });
 
@@ -167,10 +170,10 @@ export class HazardsService {
       .select(['u.id', 'u.fullName', 'u.role'])
       .where('u.active = :active', { active: true })
       .andWhere('u.role IN (:...officerRoles)', {
-        officerRoles: [Role.DISTRICT_SAFETY_OFFICER, Role.REGIONAL_SAFETY_OFFICER, Role.GLOBAL_SAFETY_OFFICER],
+        officerRoles: SAFETY_OFFICER_ROLES,
       })
-      .andWhere('(u.role = :globalOfficer OR u.regionId = :regionId)', {
-        globalOfficer: Role.GLOBAL_SAFETY_OFFICER,
+      .andWhere('(u.role IN (:...globalOfficers) OR u.regionId = :regionId)', {
+        globalOfficers: HEAD_OFFICE_OFFICER_ROLES,
         regionId: hazard.regionId,
       })
       .orderBy('u.fullName', 'ASC');

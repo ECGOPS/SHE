@@ -3,11 +3,22 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
 import { Permission } from '@ecg-she/shared';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import QrCode2OutlinedIcon from '@mui/icons-material/QrCode2Outlined';
+import ElectricalServicesOutlinedIcon from '@mui/icons-material/ElectricalServicesOutlined';
+import VerifiedOutlinedIcon from '@mui/icons-material/VerifiedOutlined';
 import { endpoints } from '../../api/endpoints';
+import {
+  CASE_FILE_CARD_SX,
+  CaseFileHeader,
+  CaseFileMetric,
+  CaseFileSkeleton,
+  titleCase,
+} from '../../components/case-file';
 import { useAuthStore } from '../../stores/auth.store';
 
 function words(value: unknown): string {
-  return String(value ?? '').replaceAll('_', ' ');
+  return titleCase(String(value ?? ''));
 }
 
 function errorMessage(err: unknown): string {
@@ -60,35 +71,43 @@ export function PpeItemPage() {
     onError: (err) => setError(errorMessage(err)),
   });
 
-  if (item.isLoading || !data) return <Typography>Loading...</Typography>;
+  if (item.isLoading || !data) return <CaseFileSkeleton />;
 
   return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" spacing={1}>
-        <Stack spacing={0.5}>
-          <Typography variant="h5" fontWeight={700}>{data.name}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {data.sku} · {words(data.category)}
-            {data.voltageClass ? ` · ${words(data.voltageClass)}` : ''}
-          </Typography>
-        </Stack>
-        {canManage && <Button variant="contained" onClick={() => navigate('/ppe/issue')}>Issue PPE</Button>}
-      </Stack>
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/ppe"
+        backLabel="PPE"
+        reference={data.sku}
+        title={data.name || 'PPE item'}
+        chips={[
+          { label: words(data.category), variant: 'outlined' },
+          ...(data.stockLow ? [{ label: 'Stock low', color: 'warning' as const }] : []),
+        ]}
+        actions={canManage ? <Button variant="contained" onClick={() => navigate('/ppe/issue')}>Issue PPE</Button> : undefined}
+        meta={[
+          { icon: <QrCode2OutlinedIcon fontSize="small" />, label: 'SKU', value: data.sku || '—' },
+          { icon: <Inventory2OutlinedIcon fontSize="small" />, label: 'In stock', value: String(data.stockOnHand ?? 0) },
+          { icon: <ElectricalServicesOutlinedIcon fontSize="small" />, label: 'Voltage class', value: data.voltageClass ? words(data.voltageClass) : '—' },
+          { icon: <VerifiedOutlinedIcon fontSize="small" />, label: 'Standard', value: data.enStandard || (data.nfpaArcCategory ? `Arc ${words(data.nfpaArcCategory)}` : '—') },
+        ]}
+      />
       {error && <Alert severity="error">{error}</Alert>}
       {data.stockLow && <Alert severity="warning">{data.stockOnHand} in stock. Reorder at {data.reorderLevel}.</Alert>}
-      <Card>
-        <CardContent>
-          <Typography variant="body2">In stock: {data.stockOnHand}</Typography>
-          <Typography variant="body2">Reorder at: {data.reorderLevel ?? 0}</Typography>
-          {data.shelfLifeMonths ? <Typography variant="body2">Shelf life: {data.shelfLifeMonths} months</Typography> : null}
-          {data.retestIntervalMonths ? <Typography variant="body2">Retest every {data.retestIntervalMonths} months</Typography> : null}
-          {data.enStandard ? <Typography variant="body2">{data.enStandard}</Typography> : null}
-          {data.nfpaArcCategory ? <Typography variant="body2">Arc category {words(data.nfpaArcCategory)}</Typography> : null}
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Stock</Typography>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} mt={1.5}>
+            <CaseFileMetric label="In stock" value={data.stockOnHand ?? 0} alert={!!data.stockLow} />
+            <CaseFileMetric label="Reorder at" value={data.reorderLevel ?? 0} />
+            <CaseFileMetric label="Shelf life" value={data.shelfLifeMonths ? `${data.shelfLifeMonths} mo` : '—'} />
+            <CaseFileMetric label="Retest" value={data.retestIntervalMonths ? `${data.retestIntervalMonths} mo` : '—'} />
+          </Stack>
         </CardContent>
       </Card>
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Who has it</Typography>
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Who has it</Typography>
           {!data.issues?.length && <Alert severity="info" sx={{ mt: 1 }}>Nobody has been issued this item.</Alert>}
           <Stack spacing={1.5} mt={1}>
             {(data.issues ?? []).map((row) => (

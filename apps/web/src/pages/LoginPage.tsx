@@ -31,8 +31,9 @@ import { MicrosoftLogo } from '../components/MicrosoftLogo';
  */
 const TEST_ACCOUNTS: Array<{ email: string; password: string; role: Role; scope: string }> = import.meta.env.DEV ? [
   { email: 'admin@ecg.com.gh',   password: 'Admin@123',    role: Role.SYS_ADMIN,     scope: 'Full system access' },
-  { email: 'global@ecg.com.gh',  password: 'Global@123',   role: Role.GLOBAL_USER,   scope: 'Head Office staff — read only' },
+  { email: 'global@ecg.com.gh',  password: 'Global@123',   role: Role.GLOBAL_USER,   scope: 'Head Office staff — reports like other staff' },
   { email: 'she.global@ecg.com.gh', password: 'Safety@123', role: Role.GLOBAL_SAFETY_OFFICER, scope: 'Head Office safety officer' },
+  { email: 'she.ho@ecg.com.gh', password: 'Safety@123', role: Role.HEAD_OFFICE_SHE, scope: 'Head Office SHE' },
   { email: 'she.ae@ecg.com.gh', password: 'Safety@123', role: Role.REGIONAL_SAFETY_OFFICER, scope: 'Accra East safety officer' },
   { email: 'she.ae.mak@ecg.com.gh', password: 'Safety@123', role: Role.DISTRICT_SAFETY_OFFICER, scope: 'Makola safety officer' },
   { email: 'she.asw.adu@ecg.com.gh', password: 'Safety@123', role: Role.DISTRICT_SAFETY_OFFICER, scope: 'Adum safety officer' },
@@ -300,7 +301,7 @@ export function LoginPage() {
                           color={
                             a.role === Role.SYS_ADMIN
                               ? 'error'
-                              : a.role === Role.GLOBAL_SAFETY_OFFICER
+                              : a.role === Role.GLOBAL_SAFETY_OFFICER || a.role === Role.HEAD_OFFICE_SHE
                                 ? 'warning'
                                 : a.role === Role.REGIONAL_SAFETY_OFFICER
                                   ? 'info'

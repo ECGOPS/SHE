@@ -13,19 +13,23 @@ The left rail lists every module you have access to. Your role determines what y
 
 | Role | Sees |
 | ---- | ---- |
-| District User | Their own district's incidents, hazards, inspections, etc. |
-| Regional User | All districts in their region + regional dashboards |
-| Global User   | All ECG data + national KPIs |
+| District staff | Their own district's incidents, hazards, inspections, etc., plus reports they filed elsewhere |
+| Regional staff | Their region's records, plus reports they filed elsewhere |
+| Head Office staff | Only the reports they filed — they pick the region and district like other staff |
+| Head Office safety officer | Every region and district |
+| Head Office SHE | Every region and district — same as Head Office safety officer |
 | Sys Admin     | Everything + administration tools |
 
 ## 3. Reporting an incident
 
-1. **Incidents → Report incident**.
-2. Choose type and severity (Negligible → Catastrophic).
-3. Add a clear title, full description, time and location (auto-fills via GPS).
-4. Capture photos / videos directly with your camera.
-5. Add witness statements (with optional digital signatures).
-6. Tap **Submit** — even with no signal, your report is saved locally and synced as soon as you reconnect.
+Follow the six-step reporting workflow:
+
+1. **Immediate response** — at the scene, give first aid if needed, secure the area, call emergency services when required, and inform the supervisor. Tick those checks on **Incidents → Report incident** before you file.
+2. **Notification** — file the report (type, severity, title, description, time, GPS, photos). Even with no signal, it is saved locally and synced when you reconnect. The safety officer for that district is notified.
+3. **Documentation** — the case is now on the incident record with photos, people counts and location.
+4. **Investigation** — assign an investigator, add witness statements, and record findings including the **root cause**.
+5. **Corrective and preventive action** — raise at least one CAPA from the incident. If a procedure, JSA or other protocol must change, tick that on the action and record what must be updated. Open **Management** to maintain the ISO registers.
+6. **Submit to management** — when the investigator, root cause and a CAPA are on record, tap **Submit to management**. Approvers then close the case. Export the PDF report from the incident page for internal management reporting.
 
 ## 4. Hazard reporting & risk matrix
 
@@ -53,6 +57,13 @@ Open → Assigned → In progress → Verification → Closed.
 
 Overdue items flip to `OVERDUE` automatically and emit notifications.
 The verifier closes the action — and only the verifier can.
+If the action requires a protocol update, link the controlled document, JSA, hazard, or change record and record what changed before sending it for a check.
+
+## 6a. Management system (ISO)
+
+**Management** holds the ISO 45001 / 14001 registers that the other modules do not already keep: context, policy, scope, interested parties, legal requirements, objectives, aspects, controlled documents, communication, monitoring, change, emergencies, management review, worker consultation, and contractors.
+
+Head Office records policy, scope and context. Safety officers record the rest for their region. Staff can read issued procedures and the published policy. These registers start empty — type in ECG’s real documents. Do not invent them.
 
 ## 7. Working offline
 

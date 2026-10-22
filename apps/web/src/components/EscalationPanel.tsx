@@ -76,7 +76,7 @@ function previousScope(s: IssueScope): IssueScope | null {
   return idx > 0 ? ISSUE_SCOPE_LADDER[idx - 1] : null;
 }
 
-/** Where on the tier does this user sit? Mirrors the backend logic. */
+/** Where on the tier a safety officer sits. Reporters never receive the action buttons. */
 function actorScope(role: Role): IssueScope {
   if (isGlobalScope(role)) return IssueScope.HEAD_OFFICE;
   if (isRegionalScope(role)) return IssueScope.REGIONAL;
@@ -108,9 +108,10 @@ export function EscalationPanel({
   const [error, setError] = useState<string | null>(null);
 
   const myScope = session ? actorScope(session.user.role) : IssueScope.DISTRICT;
+  const isOfficer =
+    !!session && (session.user.role === Role.SYS_ADMIN || isSafetyOfficer(session.user.role));
   const canHandleNearMiss =
-    entityType !== EscalationEntityType.NEAR_MISS ||
-    (!!session && (session.user.role === Role.SYS_ADMIN || isSafetyOfficer(session.user.role)));
+    entityType !== EscalationEntityType.NEAR_MISS || isOfficer;
   const canHandleHazard =
     entityType !== EscalationEntityType.HAZARD ||
     (!!session &&
@@ -121,7 +122,7 @@ export function EscalationPanel({
   const isResolved = !!resolvedAt;
   const upTier = nextScope(currentScope);
   const downTier = previousScope(currentScope);
-  const canMove = canHandleNearMiss && canHandleHazard;
+  const canMove = isOfficer && canHandleNearMiss && canHandleHazard;
   const canEscalate = canMove && !isResolved && !!upTier && myRank >= currentRank;
   const canReferDown = canMove && !isResolved && !!downTier && myRank >= currentRank;
   const canResolve = canMove && !isResolved && myRank >= currentRank;
@@ -235,11 +236,11 @@ export function EscalationPanel({
   }, [dialog, entityType, requireActionBeforeClose]);
 
   return (
-    <Card>
-      <CardContent>
+    <Card sx={{ border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+      <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
         <Stack direction="row" alignItems="center" spacing={1.5} flexWrap="wrap">
           <HistoryRoundedIcon color="primary" />
-          <Typography variant="h6" fontWeight={700}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>
             Escalation ladder
           </Typography>
           <Box flex={1} />
@@ -276,7 +277,7 @@ export function EscalationPanel({
           })}
         </Stack>
 
-        {canHandleNearMiss && (
+        {isOfficer && canHandleNearMiss && (
         <Stack direction="row" spacing={1} mt={2} flexWrap="wrap">
           <Tooltip
             title={canEscalate ? '' : isResolved ? 'Already resolved' : 'No higher tier or you lack authority'}

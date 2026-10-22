@@ -3,8 +3,20 @@ import { Link as RouterLink, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, Card, CardContent, Chip, MenuItem, Stack, TextField, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import { Permission } from '@ecg-she/shared';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import DomainOutlinedIcon from '@mui/icons-material/DomainOutlined';
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import { endpoints } from '../../api/endpoints';
 import { ExportReportButton } from '../../components/ExportReportButton';
+import {
+  CASE_FILE_CARD_SX,
+  CaseFileCard,
+  CaseFileHeader,
+  CaseFileSkeleton,
+  formatDay,
+  titleCase,
+} from '../../components/case-file';
 import { useAuthStore } from '../../stores/auth.store';
 
 type Result = 'CONFORM' | 'NONCONFORM' | 'NA';
@@ -123,7 +135,7 @@ export function AuditDetailPage() {
     });
   };
 
-  if (record.isLoading) return <Typography>Loading the audit…</Typography>;
+  if (record.isLoading) return <CaseFileSkeleton />;
   if (!audit) return <Alert severity="error">Audit not found</Alert>;
 
   const findings = audit.findings ?? [];
@@ -132,33 +144,43 @@ export function AuditDetailPage() {
   const lead = audit.leadAuditor?.fullName || audit.leadAuditorName || 'Not named';
 
   return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={1}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-          <Typography variant="h5" fontWeight={700}>{audit.referenceCode ?? 'Audit'}</Typography>
-          <Chip label={audit.status ?? ''} color={audit.status === 'CLOSED' ? 'success' : audit.status === 'PLANNED' ? 'default' : 'warning'} />
-        </Stack>
-        <ExportReportButton filename={`${audit.referenceCode ?? 'audit'}-report.pdf`} download={() => endpoints.auditReport(id)} />
-      </Stack>
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/audits"
+        backLabel="Audits"
+        reference={audit.referenceCode ?? 'Audit'}
+        title={audit.auditee || audit.scope || 'Audit'}
+        chips={[
+          { label: titleCase(audit.status), color: audit.status === 'CLOSED' ? 'success' : audit.status === 'PLANNED' ? 'default' : 'warning' },
+          { label: titleCase(audit.type), variant: 'outlined' },
+        ]}
+        actions={<ExportReportButton filename={`${audit.referenceCode ?? 'audit'}-report.pdf`} download={() => endpoints.auditReport(id)} />}
+        meta={[
+          { icon: <DomainOutlinedIcon fontSize="small" />, label: 'Auditee', value: audit.auditee || '—' },
+          { icon: <PersonOutlineRoundedIcon fontSize="small" />, label: 'Lead auditor', value: lead },
+          { icon: <EventOutlinedIcon fontSize="small" />, label: 'Scheduled', value: formatDay(audit.scheduledDate) },
+          { icon: <AssignmentOutlinedIcon fontSize="small" />, label: 'Scope', value: audit.scope || '—' },
+        ]}
+      />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
-      <Card>
-        <CardContent>
-          <Typography variant="body2">Type: {String(audit.type ?? '').replaceAll('_', ' ')}</Typography>
-          <Typography variant="body2">Auditee: {audit.auditee}</Typography>
-          <Typography variant="body2">Lead auditor: {lead}</Typography>
-          <Typography variant="body2">Scope: {audit.scope}</Typography>
-          <Typography variant="body2">Objectives: {audit.objectives}</Typography>
-          {audit.methods && <Typography variant="body2">Evidence: {audit.methods.replaceAll('_', ' ').replaceAll('\n', ', ')}</Typography>}
-        </CardContent>
-      </Card>
+      <CaseFileCard title="Objectives">
+        <Typography sx={{ mt: 1.5, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+          {audit.objectives || 'No objectives were recorded.'}
+        </Typography>
+        {audit.methods && (
+          <Typography variant="body2" color="text.secondary" mt={2}>
+            Evidence: {audit.methods.replaceAll('_', ' ').replaceAll('\n', ', ')}
+          </Typography>
+        )}
+      </CaseFileCard>
 
       {audit.status === 'PLANNED' && canConduct && (
         <Button variant="contained" onClick={() => void run(() => endpoints.startAudit(id))}>Start the audit</Button>
       )}
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Clauses</Typography>
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Clauses</Typography>
           <Stack spacing={2} mt={2} component="form" onSubmit={onChecklist}>
             {rows.map((row, index) => (
               <Stack key={row.clause} spacing={1}>
@@ -224,9 +246,9 @@ export function AuditDetailPage() {
       )}
 
       {findings.length > 0 && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" fontWeight={700}>Findings</Typography>
+        <Card sx={CASE_FILE_CARD_SX}>
+          <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Findings</Typography>
             <Stack spacing={2} mt={2}>
               {findings.map((finding) => (
                 <Stack key={finding.id} spacing={1}>

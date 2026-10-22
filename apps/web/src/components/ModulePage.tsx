@@ -566,7 +566,7 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
                         f.name === 'districtId' && !selectedRegionId
                           ? 'Select a region first.'
                           : choosesPlace && (f.name === 'regionId' || f.name === 'districtId')
-                            ? 'Choose where this happened. The safety officer for that district receives it.'
+                            ? 'Choose where this happened. The case starts at that district. The safety officer for that district receives it.'
                           : f.name === 'regionId' && lockedToRegion
                             ? 'Locked to your assigned region.'
                             : f.name === 'districtId' && lockedToDistrict

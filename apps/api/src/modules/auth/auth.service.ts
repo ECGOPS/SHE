@@ -161,7 +161,7 @@ export class AuthService {
   private mustEnrollMfa(user: User): boolean {
     if (this.config.get<string>('NODE_ENV') !== 'production') return false;
     if (!user.passwordHash) return false;
-    return isGlobalScope(user.role);
+    return isGlobalScope(user.role) || user.role === Role.GLOBAL_USER;
   }
 
   private async signMfaSetupToken(user: User): Promise<string> {

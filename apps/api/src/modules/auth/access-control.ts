@@ -3,7 +3,7 @@ import {
   isDistrictScope,
   isGlobalScope,
   isRegionalScope,
-  isStaffRole,
+  isUnscopedReporter,
   reportsInChosenPlace,
   ROLE_PERMISSIONS,
   type AuthUser,
@@ -45,9 +45,9 @@ type Actor = Pick<AuthUser, 'id' | 'role' | 'regionId' | 'districtId'>;
 
 /**
  * Whether this account may see this row.
- * Global accounts see every row in their tenant.
+ * Head Office safety and the administrator see every row in their tenant.
  * Safety officers see their region or district.
- * Staff and reporting users also see a row they own, even when it sits in another place.
+ * Staff, Head Office staff, and reporting users also see a row they own, even when it sits in another place.
  */
 export function canAccessRecord(
   user: Actor,
@@ -59,7 +59,7 @@ export function canAccessRecord(
   if (isGlobalScope(user.role)) return true;
 
   const owns = !!ownerId && ownerId === user.id;
-  if (isStaffRole(user.role)) return owns;
+  if (isUnscopedReporter(user.role)) return owns;
 
   if (isRegionalScope(user.role)) {
     const inRegion = !!record.regionId && record.regionId === user.regionId;

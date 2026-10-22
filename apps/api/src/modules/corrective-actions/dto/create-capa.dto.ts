@@ -1,9 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, Min,
+  IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, Min,
   MaxLength,
 } from 'class-validator';
-import { ROOT_CAUSE_METHOD, RootCauseMethod } from '@ecg-she/shared';
+import { PROTOCOL_LINK_KIND, ROOT_CAUSE_METHOD, RootCauseMethod } from '@ecg-she/shared';
 
 const SOURCE_TYPES = [
   'INCIDENT',
@@ -46,6 +46,11 @@ export class CreateCapaDto {
   @IsOptional()
   @IsIn(['CORRECTION', 'CORRECTIVE_ACTION', 'PREVENTIVE_ACTION'])
   actionType?: 'CORRECTION' | 'CORRECTIVE_ACTION' | 'PREVENTIVE_ACTION';
+
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() protocolUpdateRequired?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(4000) protocolUpdateNotes?: string;
+  @ApiPropertyOptional({ enum: PROTOCOL_LINK_KIND }) @IsOptional() @IsIn(PROTOCOL_LINK_KIND) protocolLinkKind?: (typeof PROTOCOL_LINK_KIND)[number];
+  @ApiPropertyOptional() @IsOptional() @IsUUID() protocolLinkId?: string;
 }
 
 export class UpdateCapaProgressDto {
@@ -54,6 +59,10 @@ export class UpdateCapaProgressDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() assigneeId?: string;
   @ApiPropertyOptional() @IsOptional() @IsIn(ROOT_CAUSE_METHOD) rootCauseMethod?: RootCauseMethod;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(4000) rootCauseStatement?: string;
+  @ApiPropertyOptional() @IsOptional() @IsBoolean() protocolUpdateRequired?: boolean;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(4000) protocolUpdateNotes?: string;
+  @ApiPropertyOptional({ enum: PROTOCOL_LINK_KIND }) @IsOptional() @IsIn(PROTOCOL_LINK_KIND) protocolLinkKind?: (typeof PROTOCOL_LINK_KIND)[number];
+  @ApiPropertyOptional() @IsOptional() @IsUUID() protocolLinkId?: string;
 }
 
 export class VerifyCapaDto {

@@ -20,8 +20,20 @@ import {
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 import { Permission, RISK_LIKELIHOOD, RISK_SEVERITY } from '@ecg-she/shared';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import { endpoints } from '../../api/endpoints';
 import { ExportReportButton } from '../../components/ExportReportButton';
+import {
+  CASE_FILE_CARD_SX,
+  CaseFileHeader,
+  CaseFileSkeleton,
+  formatDay,
+  placeName,
+  titleCase,
+} from '../../components/case-file';
 import { useAuthStore } from '../../stores/auth.store';
 import { CrewPersonField, ListedMultiField, ListedTextField, SupervisorField } from './ChoiceFields';
 import { PermitField } from './PermitField';
@@ -164,7 +176,7 @@ export function JsaDetailPage() {
     setStepDrafts(next.length ? next : [emptyStep()]);
   }, [data, seed]);
 
-  if (isLoading || !data) return <Typography>Loading...</Typography>;
+  if (isLoading || !data) return <CaseFileSkeleton />;
 
   const editable = canWrite && (data.status === 'DRAFT' || data.status === 'REJECTED');
   const crew = data.crew ?? [];
@@ -219,23 +231,32 @@ export function JsaDetailPage() {
   }
 
   return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={1}>
-        <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
-          <Typography variant="h5" fontWeight={700}>{data.referenceCode}</Typography>
-          <Chip label={data.status.replaceAll('_', ' ')} color={STATUS_COLOR[data.status] ?? 'default'} />
-          {data.permitRequired && <Chip label="Permit required" color="warning" variant="outlined" />}
-        </Stack>
-        <ExportReportButton filename={`${data.referenceCode}-report.pdf`} download={() => endpoints.jsaReport(id!)} />
-      </Stack>
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/jsa"
+        backLabel="Job safety analysis"
+        reference={data.referenceCode}
+        title={data.workActivity || 'Job briefing'}
+        chips={[
+          { label: titleCase(data.status), color: STATUS_COLOR[data.status] ?? 'default' },
+          ...(data.permitRequired ? [{ label: 'Permit required', color: 'warning' as const, variant: 'outlined' as const }] : []),
+        ]}
+        actions={<ExportReportButton filename={`${data.referenceCode}-report.pdf`} download={() => endpoints.jsaReport(id!)} />}
+        meta={[
+          { icon: <PlaceOutlinedIcon fontSize="small" />, label: 'Job location', value: data.jobLocation || placeName(data.region, data.district) },
+          { icon: <EventOutlinedIcon fontSize="small" />, label: 'Job date', value: formatDay(data.jobDate) },
+          { icon: <PersonOutlineRoundedIcon fontSize="small" />, label: 'Supervisor', value: data.supervisor?.fullName ?? 'Not named' },
+          { icon: <GroupsOutlinedIcon fontSize="small" />, label: 'Crew', value: String((data.crewSize ?? data.crew?.length) || '—') },
+        ]}
+      />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
       {data.rejectionNotes && <Alert severity="warning">Sent back: {data.rejectionNotes}</Alert>}
       {data.status === 'APPROVED' && (
         <Alert severity="info">If the job or the weather changes, revise this briefing before work continues.</Alert>
       )}
 
-      <Card>
-        <CardContent>
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
           {editable ? (
             <Stack spacing={2}>
               <ListedTextField label="Work activity" value={workActivity} options={JSA_ACTIVITIES} onChange={setWorkActivity} required helperText="The job for this shift. Use Other to name the feeder or the asset." />
@@ -286,7 +307,7 @@ export function JsaDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card sx={CASE_FILE_CARD_SX}>
         <CardContent>
           <Typography variant="h6" fontWeight={700}>Steps</Typography>
           {editable ? (
@@ -337,7 +358,7 @@ export function JsaDetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card sx={CASE_FILE_CARD_SX}>
         <CardContent>
           <Typography variant="h6" fontWeight={700}>Crew briefing</Typography>
           <Typography variant="body2" color="text.secondary">Tick Briefed as each person hears the controls.</Typography>
@@ -405,7 +426,7 @@ export function JsaDetailPage() {
       )}
 
       {canApprove && data.status === 'PENDING_APPROVAL' && (
-        <Card>
+        <Card sx={CASE_FILE_CARD_SX}>
           <CardContent>
             <Typography variant="h6" fontWeight={700}>Accept the briefing</Typography>
             <Typography variant="body2" color="text.secondary" mt={0.5}>

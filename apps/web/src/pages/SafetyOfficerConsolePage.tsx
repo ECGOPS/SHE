@@ -280,7 +280,14 @@ function QueueRow({ it }: { it: QueueItem }) {
   );
 }
 
+function newestFirst(items: QueueItem[]): QueueItem[] {
+  return [...items].sort(
+    (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
+  );
+}
+
 function QueueList({ items, empty }: { items: QueueItem[]; empty: string }) {
+  const ordered = newestFirst(items);
   if (!items.length) {
     return (
       <Box sx={{ py: 4, textAlign: 'center' }}>
@@ -292,10 +299,10 @@ function QueueList({ items, empty }: { items: QueueItem[]; empty: string }) {
   }
   return (
     <List disablePadding>
-      {items.map((it, i) => (
+      {ordered.map((it, i) => (
         <Box key={`${it.module}:${it.id}`}>
           <QueueRow it={it} />
-          {i < items.length - 1 && <Divider component="li" />}
+          {i < ordered.length - 1 && <Divider component="li" />}
         </Box>
       ))}
     </List>
@@ -332,11 +339,11 @@ export function SafetyOfficerConsolePage() {
   });
   const hazards = useQuery({
     queryKey: ['console', 'hazards'],
-    queryFn: () => endpoints.hazards({ status: 'OPEN,MITIGATED', pageSize: 100 }),
+    queryFn: () => endpoints.hazards({ status: 'OPEN,MITIGATED', pageSize: 100, sortBy: 'createdAt', sortDir: 'DESC' }),
   });
   const capas = useQuery({
     queryKey: ['console', 'capa'],
-    queryFn: () => endpoints.capa({ status: 'OPEN,ASSIGNED,IN_PROGRESS,OVERDUE', pageSize: 100 }),
+    queryFn: () => endpoints.capa({ status: 'OPEN,ASSIGNED,IN_PROGRESS,OVERDUE', pageSize: 100, sortBy: 'createdAt', sortDir: 'DESC' }),
   });
   const capaStats = useQuery({
     queryKey: ['console', 'capa-stats'],
@@ -344,7 +351,7 @@ export function SafetyOfficerConsolePage() {
   });
   const nearMiss = useQuery({
     queryKey: ['console', 'near-miss'],
-    queryFn: () => endpoints.nearMiss({ status: 'OPEN,REPORTED,UNDER_REVIEW', pageSize: 100 }),
+    queryFn: () => endpoints.nearMiss({ status: 'OPEN,REPORTED,UNDER_REVIEW', pageSize: 100, sortBy: 'occurredAt', sortDir: 'DESC' }),
   });
   const ptw = useQuery({
     queryKey: ['console', 'ptw'],
@@ -534,12 +541,12 @@ export function SafetyOfficerConsolePage() {
       });
     }
 
-    // Sort: critical/high severity first, then oldest first.
+    // Sort: critical/high severity first, then newest first.
     return q.sort((a, b) => {
       const sa = severityColor(a.severity) === 'error' ? 0 : severityColor(a.severity) === 'warning' ? 1 : 2;
       const sb = severityColor(b.severity) === 'error' ? 0 : severityColor(b.severity) === 'warning' ? 1 : 2;
       if (sa !== sb) return sa - sb;
-      return new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime();
+      return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
     });
   }, [openIncidents, openNearMisses, highRiskHazards, overdueCapas, pendingPermits]);
 

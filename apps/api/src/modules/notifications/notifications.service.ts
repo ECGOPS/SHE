@@ -4,7 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import * as nodemailer from 'nodemailer';
 import * as webPush from 'web-push';
-import { NotificationChannel, Role } from '@ecg-she/shared';
+import { HEAD_OFFICE_OFFICER_ROLES, NotificationChannel, Role } from '@ecg-she/shared';
 import { Notification, PushSubscriptionRecord } from './entities/notification.entity';
 import { User } from '../users/entities/user.entity';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
@@ -197,7 +197,7 @@ export class NotificationsService {
    * Fan a domain event out to every user whose hierarchical scope intersects
    * with the event's region / district:
    *
-   *   • SYS_ADMIN + GLOBAL_USER  → always notified
+   *   • SYS_ADMIN + Head Office safety / Head Office SHE → always notified
    *   • REGIONAL_USER  → notified when regionId matches the event
    *   • DISTRICT_USER  → notified when districtId matches the event
    *
@@ -271,12 +271,12 @@ export class NotificationsService {
       .createQueryBuilder('u')
       .where('u.active = :active', { active: true })
       .andWhere(
-        // GLOBAL/SYS_ADMIN see everything; REGIONAL_USER scoped to region;
-        // DISTRICT_USER scoped to the exact district.
+        // Head Office safety and admin see everything; regional officers and staff
+        // are scoped to the region; district officers and staff to the district.
         '(u.role IN (:...broad) OR (u.role IN (:...regional) AND u.regionId = :regionId) ' +
           'OR (u.role IN (:...district) AND u.districtId = :districtId))',
         {
-          broad: [Role.SYS_ADMIN, Role.GLOBAL_USER, Role.GLOBAL_SAFETY_OFFICER],
+          broad: [Role.SYS_ADMIN, ...HEAD_OFFICE_OFFICER_ROLES],
           regional: [Role.REGIONAL_USER, Role.REGIONAL_SAFETY_OFFICER],
           regionId,
           district: [Role.DISTRICT_USER, Role.DISTRICT_SAFETY_OFFICER],

@@ -3,8 +3,20 @@ import { useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert, Box, Button, Card, CardContent, Chip, Stack, TextField, Typography } from '@mui/material';
 import { Permission, dutyForPermit, ppeForPermit } from '@ecg-she/shared';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import { endpoints } from '../../api/endpoints';
 import { ExportReportButton } from '../../components/ExportReportButton';
+import {
+  CASE_FILE_CARD_SX,
+  CaseFileHeader,
+  CaseFileSkeleton,
+  formatWhen,
+  placeName,
+  titleCase,
+} from '../../components/case-file';
 import { useAuthStore } from '../../stores/auth.store';
 
 interface Named {
@@ -105,7 +117,7 @@ export function PtwDetailPage() {
     enabled: !!data?.holderId && !!ppeNeed && permissions.includes(Permission.PPE_READ),
   });
 
-  if (isLoading || !data) return <Typography>Loading...</Typography>;
+  if (isLoading || !data) return <CaseFileSkeleton />;
 
   const isHolder = !!sessionUserId && sessionUserId === data.holderId;
   const isApplicant = !!sessionUserId && sessionUserId === data.applicantId;
@@ -119,15 +131,24 @@ export function PtwDetailPage() {
   const run = (fn: () => Promise<unknown>) => fn().then(refresh).catch((err: unknown) => setError(errorMessage(err)));
 
   return (
-    <Stack spacing={2}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={1}>
-        <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
-          <Typography variant="h5" fontWeight={700}>{data.referenceCode}</Typography>
-          <Chip label={data.status.replaceAll('_', ' ')} color={STATUS_COLOR[data.status] ?? 'default'} />
-          <Chip label={data.type.replaceAll('_', ' ')} variant="outlined" />
-        </Stack>
-        <ExportReportButton filename={`${data.referenceCode}-report.pdf`} download={() => endpoints.ptwReport(id!)} />
-      </Stack>
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/ptw"
+        backLabel="Permit-to-work"
+        reference={data.referenceCode}
+        title={data.workDescription}
+        chips={[
+          { label: titleCase(data.status), color: STATUS_COLOR[data.status] ?? 'default' },
+          { label: titleCase(data.type), variant: 'outlined' },
+        ]}
+        actions={<ExportReportButton filename={`${data.referenceCode}-report.pdf`} download={() => endpoints.ptwReport(id!)} />}
+        meta={[
+          { icon: <PlaceOutlinedIcon fontSize="small" />, label: 'Work location', value: data.workLocation || placeName(data.region, data.district) },
+          { icon: <EventOutlinedIcon fontSize="small" />, label: 'Valid', value: `${formatWhen(data.validFrom)} – ${formatWhen(data.validTo)}` },
+          { icon: <PersonOutlineRoundedIcon fontSize="small" />, label: 'Applicant', value: data.applicant?.fullName ?? 'Not recorded' },
+          { icon: <BadgeOutlinedIcon fontSize="small" />, label: 'Holder', value: data.holder?.fullName ?? 'Not named' },
+        ]}
+      />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
       {competence.data?.required && competence.data.state === 'NONE' && (
         <Alert severity="error">The holder has no current authorization for this permit.</Alert>
@@ -163,24 +184,13 @@ export function PtwDetailPage() {
       {data.status === 'APPROVED' && <Alert severity="info">Issued. The holder accepts it at the work site before work starts.</Alert>}
       {data.status === 'EXPIRED' && <Alert severity="error">This permit is past its end time. Raise a new one for the next shift.</Alert>}
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6">{data.workDescription}</Typography>
-          <Typography color="text.secondary" mt={0.5}>
-            {data.workLocation}
-            {data.region?.name ? ` · ${data.region.name}` : ''}
-            {data.district?.name ? ` / ${data.district.name}` : ''}
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>
+            Permit details
           </Typography>
-          <Typography mt={1}>
-            <strong>Shift. </strong>
-            {data.validFrom ? new Date(data.validFrom).toLocaleString() : '—'}
-            {' – '}
-            {data.validTo ? new Date(data.validTo).toLocaleString() : '—'}
-            {data.crewSize ? ` · crew ${data.crewSize}` : ''}
-          </Typography>
-          <Typography mt={1}><strong>Applicant. </strong>{data.applicant?.fullName ?? 'Not recorded'}</Typography>
+          {data.crewSize ? <Typography mt={1.5}><strong>Crew. </strong>{data.crewSize}</Typography> : null}
           <Typography mt={1}><strong>Issuer. </strong>{data.issuer?.fullName ?? 'Not issued'}</Typography>
-          <Typography mt={1}><strong>Holder. </strong>{data.holder?.fullName ?? 'Not named'}</Typography>
           {data.standbyPerson && <Typography mt={1}><strong>Standby. </strong>{data.standbyPerson.fullName}</Typography>}
           {data.authorisingManager && <Typography mt={1}><strong>Authorising manager. </strong>{data.authorisingManager.fullName}</Typography>}
           {data.isolationMethod && (
@@ -205,9 +215,9 @@ export function PtwDetailPage() {
       </Card>
 
       {data.gasTestRequired && (data.status === 'PENDING_APPROVAL' || data.status === 'APPROVED') && (canWrite || canApprove) && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" fontWeight={700}>Gas test</Typography>
+        <Card sx={CASE_FILE_CARD_SX}>
+          <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Gas test</Typography>
             <Typography variant="body2" color="text.secondary">Record a reading before this permit can be issued.</Typography>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} mt={1}>
               <TextField label="Oxygen" value={oxygen} onChange={(e) => setOxygen(e.target.value)} size="small" fullWidth />
@@ -223,9 +233,9 @@ export function PtwDetailPage() {
       )}
 
       {canApprove && data.status === 'PENDING_APPROVAL' && sessionUserId !== data.applicantId && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" fontWeight={700}>Issue the permit</Typography>
+        <Card sx={CASE_FILE_CARD_SX}>
+          <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Issue the permit</Typography>
             <Typography variant="body2" color="text.secondary" mt={0.5}>
               The person who raised it cannot issue it. Hot work and confined space need a gas test, a standby person, and an authorising manager.
             </Typography>
@@ -260,9 +270,9 @@ export function PtwDetailPage() {
       )}
 
       {canHandBack && (data.status === 'ACTIVE' || data.status === 'SUSPENDED') && (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" fontWeight={700}>Hand the permit back</Typography>
+        <Card sx={CASE_FILE_CARD_SX}>
+          <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+            <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>Hand the permit back</Typography>
             <Typography variant="body2" color="text.secondary">Confirm the site is safe and how the isolations were left.</Typography>
             <TextField label="Hand-back" value={handbackNotes} onChange={(e) => setHandbackNotes(e.target.value)} fullWidth size="small" sx={{ mt: 1 }} />
             <Button sx={{ mt: 1 }} variant="outlined" disabled={!handbackNotes.trim()} onClick={() => void run(() => endpoints.handbackPtw(data.id, handbackNotes.trim()))}>

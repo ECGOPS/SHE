@@ -1,6 +1,13 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
-import { AuthUser, isDistrictScope, isGlobalScope, isRegionalScope, isStaffRole, reportsInChosenPlace } from '@ecg-she/shared';
+import {
+  AuthUser,
+  isDistrictScope,
+  isGlobalScope,
+  isRegionalScope,
+  isUnscopedReporter,
+  reportsInChosenPlace,
+} from '@ecg-she/shared';
 import { getCurrentTenantId } from '../../common/context/request-context';
 
 /**
@@ -22,7 +29,8 @@ export class RbacScopeService {
     if (tenantId) {
       qb.andWhere(`${alias}.tenantId = :__tenantId`, { __tenantId: tenantId });
     }
-    if (isStaffRole(user.role)) {
+    // Head Office staff and ordinary staff: own reports only, never nationwide lists.
+    if (isUnscopedReporter(user.role)) {
       if (ownColumn) qb.andWhere(`${alias}.${ownColumn} = :__ownUser`, { __ownUser: user.id });
       else qb.andWhere('1 = 0');
       return qb;

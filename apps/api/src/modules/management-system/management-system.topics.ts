@@ -13,6 +13,12 @@ export const MANAGEMENT_TOPICS = [
     prompt: 'Record what the management system covers, which places and activities are in, and what is outside it.',
   },
   {
+    kind: 'CONTEXT',
+    clause: 'ISO 45001 4.1 and ISO 14001 4.1',
+    title: 'Context',
+    prompt: 'Record one internal or external issue that affects ECG’s safety or environmental system.',
+  },
+  {
     kind: 'INTERESTED_PARTY',
     clause: 'ISO 45001 4.2 and ISO 14001 4.2',
     title: 'Interested parties',
@@ -35,6 +41,24 @@ export const MANAGEMENT_TOPICS = [
     clause: 'ISO 14001 6.1.2',
     title: 'Environmental aspects',
     prompt: 'Record an activity, the aspect, the impact, and whether it is significant.',
+  },
+  {
+    kind: 'DOCUMENT',
+    clause: 'ISO 45001 7.5 and ISO 14001 7.5',
+    title: 'Controlled documents',
+    prompt: 'Record a procedure or other controlled document, its version, who approved it, and when it must be reviewed.',
+  },
+  {
+    kind: 'COMMUNICATION',
+    clause: 'ISO 45001 7.4 and ISO 14001 7.4',
+    title: 'Communication',
+    prompt: 'Record what is communicated, to whom, how, and how often — internal or external.',
+  },
+  {
+    kind: 'MONITORING',
+    clause: 'ISO 45001 9.1 and ISO 14001 9.1',
+    title: 'Monitoring',
+    prompt: 'Record what is measured, the method, how often, who reviews it, and the next measurement date.',
   },
   {
     kind: 'CHANGE',
@@ -79,5 +103,5 @@ export const MANAGEMENT_COVERED = [
   { clause: 'ISO 45001 9.2 and ISO 14001 9.2', title: 'Internal audit', where: 'Audits, including the clause checklist' },
   { clause: 'ISO 45001 8.1 and occupational health', title: 'Health surveillance', where: 'Occupational health' },
   { clause: 'ISO 14001 8.2 response', title: 'Environmental events', where: 'Environmental events, including aspect, impact, and regulator notification' },
-  { clause: 'ISO 45001 7.5 and ISO 14001 7.5', title: 'Documented information', where: 'The registers and the audit trail' },
+  { clause: 'ISO 45001 7.5 and ISO 14001 7.5', title: 'Operational records', where: 'Incident, permit, inspection, and audit files, plus the audit trail' },
 ] as const;

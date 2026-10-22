@@ -1,5 +1,5 @@
 import { ExecutionContext, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { Permission, Role } from '@ecg-she/shared';
+import { isUnscopedSeat, Permission, Role } from '@ecg-she/shared';
 import { PERMISSIONS_KEY } from '../../common/decorators/roles.decorator';
 import { requestContext } from '../../common/context/request-context';
 import { ScopeGuard } from './guards/scope.guard';
@@ -16,7 +16,7 @@ function actor(role: Role, id = 'me') {
   return {
     id,
     role,
-    regionId: role === Role.STAFF || role === Role.SYS_ADMIN || role === Role.GLOBAL_SAFETY_OFFICER ? null : 'region-a',
+    regionId: isUnscopedSeat(role) ? null : 'region-a',
     districtId: role === Role.DISTRICT_SAFETY_OFFICER || role === Role.DISTRICT_USER ? 'district-a' : null,
     permissions: effectivePermissions(role),
   };
@@ -61,10 +61,26 @@ describe('object access', () => {
     );
   });
 
-  it('lets a Head Office account read any place inside the tenant', () => {
+  it('lets a Head Office safety officer read any place inside the tenant', () => {
     expect(
       canAccessRecord(actor(Role.GLOBAL_SAFETY_OFFICER), { ...row, regionId: 'region-z', districtId: 'district-z' }, 'other', SERVER_TENANT),
     ).toBe(true);
+  });
+
+  it('lets Head Office SHE read any place inside the tenant', () => {
+    expect(
+      canAccessRecord(actor(Role.HEAD_OFFICE_SHE), { ...row, regionId: 'region-z', districtId: 'district-z' }, 'other', SERVER_TENANT),
+    ).toBe(true);
+  });
+
+  it('lets Head Office staff open only a record they own', () => {
+    const hoStaff = actor(Role.GLOBAL_USER, 'ho-1');
+    expect(canAccessRecord(hoStaff, { ...row, regionId: 'region-z', districtId: 'district-z' }, 'other', SERVER_TENANT)).toBe(
+      false,
+    );
+    expect(canAccessRecord(hoStaff, { ...row, regionId: 'region-z', districtId: 'district-z' }, 'ho-1', SERVER_TENANT)).toBe(
+      true,
+    );
   });
 
   it('hides a row that belongs to another tenant', () => {
@@ -124,5 +140,25 @@ describe('scoped queries', () => {
     });
     expect(sql.some((statement) => statement.includes('tenantId'))).toBe(true);
     expect(sql.some((statement) => statement.includes('districtId'))).toBe(true);
+  });
+
+  it('limits Head Office staff to rows they own', () => {
+    const sql: string[] = [];
+    const qb = {
+      andWhere(statement: string) {
+        sql.push(statement);
+        return this;
+      },
+    };
+    requestContext.run({ tenantId: SERVER_TENANT }, () => {
+      new RbacScopeService().applyScopeFilter(
+        qb as never,
+        actor(Role.GLOBAL_USER) as never,
+        'i',
+        'reportedById',
+      );
+    });
+    expect(sql.some((statement) => statement.includes('reportedById'))).toBe(true);
+    expect(sql.some((statement) => statement.includes('districtId'))).toBe(false);
   });
 });

@@ -11,7 +11,6 @@ import {
   Chip,
   Dialog,
   DialogContent,
-  Divider,
   FormControlLabel,
   Grid2 as Grid,
   MenuItem,
@@ -22,6 +21,7 @@ import {
 import {
   CONTROL_HIERARCHY,
   EscalationEntityType,
+  ISSUE_SCOPE_LABEL,
   IssueScope,
   Permission,
   RISK_LIKELIHOOD,
@@ -29,10 +29,23 @@ import {
   ROLE_LABEL,
   Role,
 } from '@ecg-she/shared';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined';
+import PersonOutlineRoundedIcon from '@mui/icons-material/PersonOutlineRounded';
+import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import { endpoints, HazardDto } from '../../api/endpoints';
 import { imageSrcFromBlob } from '../../security/output';
 import { ExportReportButton } from '../../components/ExportReportButton';
 import { EscalationPanel } from '../../components/EscalationPanel';
+import {
+  CASE_FILE_CARD_SX,
+  CaseFileCard,
+  CaseFileHeader,
+  CaseFileMetric,
+  CaseFileSkeleton,
+  placeName,
+  titleCase,
+} from '../../components/case-file';
 import { useAuthStore } from '../../stores/auth.store';
 
 function errorMessage(err: unknown): string {
@@ -58,60 +71,68 @@ export function HazardDetailPage() {
     enabled: !!id,
   });
 
-  if (isLoading || !data) return <Typography>Loading...</Typography>;
+  if (isLoading || !data) return <CaseFileSkeleton />;
 
   const high = data.riskClass === 'HIGH' || data.riskClass === 'EXTREME';
+  const scope = ISSUE_SCOPE_LABEL[data.currentScope ?? IssueScope.DISTRICT];
 
   return (
-    <Stack spacing={3}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} justifyContent="space-between" spacing={1}>
-        <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" useFlexGap>
-          <Typography variant="h5" fontWeight={700}>{data.referenceCode}</Typography>
-          <Chip
-            label={data.status.replaceAll('_', ' ')}
-            color={data.status === 'CLOSED' ? 'success' : data.status === 'MITIGATED' ? 'info' : 'warning'}
-          />
-          <Chip
-            label={(data.riskClass ?? 'Unrated').replaceAll('_', ' ')}
-            color={RISK_COLOR[data.riskClass ?? ''] ?? 'default'}
-            variant={data.riskClass ? 'filled' : 'outlined'}
-          />
-          <Chip label={data.category.replaceAll('_', ' ')} variant="outlined" />
-        </Stack>
-        <ExportReportButton filename={`${data.referenceCode}-report.pdf`} download={() => endpoints.hazardReport(id!)} />
-      </Stack>
+    <Stack spacing={2.5}>
+      <CaseFileHeader
+        backTo="/hazards"
+        backLabel="Hazards"
+        reference={data.referenceCode}
+        title={data.title}
+        chips={[
+          { label: titleCase(data.status), color: data.status === 'CLOSED' ? 'success' : data.status === 'MITIGATED' ? 'info' : 'warning' },
+          {
+            label: titleCase(data.riskClass) === '—' ? 'Unrated' : titleCase(data.riskClass),
+            color: RISK_COLOR[data.riskClass ?? ''] ?? 'default',
+            variant: data.riskClass ? 'filled' : 'outlined',
+          },
+          { label: titleCase(data.category), variant: 'outlined' },
+          { label: data.peopleExposed ? 'People exposed' : 'Exposure not recorded', variant: 'outlined', color: data.peopleExposed ? 'error' : 'default' },
+          { label: data.resolvedAt ? `Resolved at ${scope}` : `Open at ${scope}`, variant: 'outlined' },
+        ]}
+        actions={<ExportReportButton filename={`${data.referenceCode}-report.pdf`} download={() => endpoints.hazardReport(id!)} />}
+        meta={[
+          { icon: <PlaceOutlinedIcon fontSize="small" />, label: 'Location', value: data.locationName || placeName(data.region, data.district) },
+          { icon: <PersonOutlineRoundedIcon fontSize="small" />, label: 'Reported by', value: data.reportedBy?.fullName ?? '—' },
+          { icon: <ShieldOutlinedIcon fontSize="small" />, label: 'Risk score', value: data.riskScore != null ? `${data.riskScore}${data.residualRiskScore != null ? ` · residual ${data.residualRiskScore}` : ''}` : 'Not scored' },
+          { icon: <EventOutlinedIcon fontSize="small" />, label: 'Target completion', value: data.targetCompletionDate ? String(data.targetCompletionDate).slice(0, 10) : 'Not set' },
+        ]}
+      />
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6">{data.title}</Typography>
-          <Typography color="text.secondary" mt={0.5}>
-            {data.locationName || 'Location not recorded'}
-            {data.peopleExposed ? ' · People are exposed now' : ''}
-          </Typography>
-          <Divider sx={{ my: 2 }} />
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 8 }}>
-              <Typography variant="overline" color="text.secondary">Condition</Typography>
-              <Typography>{data.description}</Typography>
-              {data.immediateAction && (
-                <Typography mt={2}><strong>Made safe. </strong>{data.immediateAction}</Typography>
-              )}
+      <Grid container spacing={2.5}>
+        <Grid size={{ xs: 12, md: 8 }}>
+          <CaseFileCard title="Condition">
+            <Typography sx={{ mt: 1.5, whiteSpace: 'pre-wrap', lineHeight: 1.7 }}>
+              {data.description || 'No description was recorded.'}
+            </Typography>
+            {data.immediateAction && (
+              <Typography mt={2}><strong>Made safe. </strong>{data.immediateAction}</Typography>
+            )}
+          </CaseFileCard>
+        </Grid>
+        <Grid size={{ xs: 12, md: 4 }}>
+          <CaseFileCard title="Risk">
+            <Grid container spacing={1.25} mt={1.5}>
+              <Grid size={{ xs: 6, md: 12 }}>
+                <CaseFileMetric label="Class" value={titleCase(data.riskClass) === '—' ? 'Unrated' : titleCase(data.riskClass)} alert={high} />
+              </Grid>
+              <Grid size={{ xs: 6, md: 12 }}>
+                <CaseFileMetric label="Score" value={data.riskScore ?? '—'} alert={high} />
+              </Grid>
+              <Grid size={{ xs: 6, md: 12 }}>
+                <CaseFileMetric label="Residual" value={data.residualRiskScore ?? '—'} />
+              </Grid>
+              <Grid size={{ xs: 6, md: 12 }}>
+                <CaseFileMetric label="Likelihood" value={titleCase(data.likelihood)} />
+              </Grid>
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="overline" color="text.secondary">Where</Typography>
-              <Typography>{data.region?.name ?? '—'} / {data.district?.name ?? '—'}</Typography>
-              <Typography variant="overline" color="text.secondary" display="block" mt={2}>Reported by</Typography>
-              <Typography>{data.reportedBy?.fullName ?? '—'}</Typography>
-              {data.riskScore != null && (
-                <Typography variant="body2" color="text.secondary" mt={2}>
-                  Score {data.riskScore}
-                  {data.residualRiskScore != null ? ` · residual ${data.residualRiskScore}` : ''}
-                </Typography>
-              )}
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+          </CaseFileCard>
+        </Grid>
+      </Grid>
 
       <Photos hazard={data} />
       <Review hazard={data} />
@@ -134,18 +155,15 @@ function Photos({ hazard }: { hazard: HazardDto }) {
   const photos = hazard.attachments ?? [];
   if (photos.length === 0) return null;
   return (
-    <Card>
-      <CardContent>
-        <Typography variant="h6" fontWeight={700}>Photos</Typography>
-        <Grid container spacing={2} mt={0.5}>
+    <CaseFileCard title="Photo evidence" hint="Captured or uploaded with this report.">
+      <Grid container spacing={2} mt={2}>
           {photos.map((photo) => (
             <Grid key={photo.id} size={{ xs: 12, sm: 6, md: 4 }}>
               <PhotoThumb hazardId={hazard.id} photo={photo} />
             </Grid>
           ))}
         </Grid>
-      </CardContent>
-    </Card>
+    </CaseFileCard>
   );
 }
 
@@ -273,12 +291,14 @@ function Review({ hazard }: { hazard: HazardDto }) {
   };
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2.5}>
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Assessment</Typography>
-          <Typography variant="body2" color="text.secondary" mt={0.5}>
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>
+            Assessment
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.75}>
             Confirm how likely and how serious this is, record the control, then close it when the condition is gone.
           </Typography>
 
@@ -365,10 +385,12 @@ function Review({ hazard }: { hazard: HazardDto }) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700}>Corrective actions</Typography>
-          <Stack spacing={1} mt={1}>
+      <Card sx={CASE_FILE_CARD_SX}>
+        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+          <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 1, fontWeight: 700 }}>
+            Corrective actions
+          </Typography>
+          <Stack spacing={1.25} mt={1.5}>
             {((capas.data?.items ?? []) as Array<{ id: string; referenceCode?: string; title?: string; status?: string }>).length === 0 && (
               <Typography variant="body2" color="text.secondary">No action raised from this hazard yet.</Typography>
             )}

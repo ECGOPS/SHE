@@ -9,10 +9,12 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   Grid2 as Grid,
   MenuItem,
   Stack,
@@ -42,6 +44,13 @@ interface FormState {
   estimatedCost?: number;
   regionId?: string;
   districtId?: string;
+  areaSecured: boolean;
+  firstAidOutcome: '' | 'GIVEN' | 'NOT_REQUIRED';
+  firstAidNotes?: string;
+  supervisorInformed: boolean;
+  supervisorName?: string;
+  emergencyServicesContacted: boolean;
+  emergencyServicesDetails?: string;
 }
 
 interface IncidentPhotoPayload {
@@ -107,10 +116,18 @@ export function IncidentNewPage() {
       locationName: fromNearMiss?.locationName ?? '',
       latitude: fromNearMiss?.latitude ?? undefined,
       longitude: fromNearMiss?.longitude ?? undefined,
+      areaSecured: false,
+      firstAidOutcome: '',
+      firstAidNotes: '',
+      supervisorInformed: false,
+      supervisorName: '',
+      emergencyServicesContacted: false,
+      emergencyServicesDetails: '',
     },
   });
 
   const regionId = watch('regionId');
+  const emergencyServicesContacted = watch('emergencyServicesContacted');
   const role = session?.user.role;
   const lockedToRegion = !!role && isSafetyOfficer(role) && (isRegionalScope(role) || isDistrictScope(role));
   const lockedToDistrict = !!role && isSafetyOfficer(role) && isDistrictScope(role);
@@ -147,6 +164,13 @@ export function IncidentNewPage() {
         fatalities: toOptionalNumber(form.fatalities),
         estimatedCost: toOptionalNumber(form.estimatedCost),
         occurredAt: new Date(form.occurredAt).toISOString(),
+        areaSecured: form.areaSecured === true,
+        firstAidOutcome: form.firstAidOutcome,
+        firstAidNotes: form.firstAidNotes?.trim() || undefined,
+        supervisorInformed: form.supervisorInformed === true,
+        supervisorName: form.supervisorName?.trim() || undefined,
+        emergencyServicesContacted: form.emergencyServicesContacted === true,
+        emergencyServicesDetails: form.emergencyServicesDetails?.trim() || undefined,
         offlineClientId: uuid(),
         ...(fromNearMiss?.id ? { sourceNearMissId: fromNearMiss.id } : {}),
         ...(payloadPhotos.length ? { photos: payloadPhotos } : {}),
@@ -324,15 +348,18 @@ export function IncidentNewPage() {
           Report a new incident
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Capture key facts now — additional photos, witnesses, RCA and investigation steps can be added later.
+          Record the scene response first, then the facts. Witnesses, root-cause findings and corrective actions are added after you submit.
           {choosesPlace
-            ? ' Choose the region and the district where it happened. The safety officer for that district receives the report.'
+            ? ' Choose the region and the district where it happened. The case starts at that district. The safety officer for that district receives the report.'
             : ' Your report stays in your assigned region and district.'}
         </Typography>
       </Box>
 
       {!navigator.onLine && (
         <Alert severity="info">You are offline — this report will be queued and synced automatically.</Alert>
+      )}
+      {mutation.isError && (
+        <Alert severity="error">{errorMessage(mutation.error)}</Alert>
       )}
       {fromNearMiss?.referenceCode && (
         <Alert severity="warning">
@@ -555,6 +582,95 @@ export function IncidentNewPage() {
               <Grid size={{ xs: 12, sm: 4 }}>
                 <TextField fullWidth type="number" label="Fatalities" {...register('fatalities', { valueAsNumber: true })} />
               </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Immediate response
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Confirm these scene actions were done before this report is filed.
+                </Typography>
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Controller
+                  control={control}
+                  name="areaSecured"
+                  rules={{ validate: (value) => value === true || 'Confirm the area was secured' }}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={<Checkbox checked={!!field.value} onChange={(_, checked) => field.onChange(checked)} />}
+                      label="The area is secured (scene isolated, access controlled)"
+                    />
+                  )}
+                />
+                {formState.errors.areaSecured && (
+                  <Typography variant="caption" color="error" display="block">
+                    {formState.errors.areaSecured.message}
+                  </Typography>
+                )}
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  select
+                  fullWidth
+                  required
+                  label="First aid"
+                  defaultValue=""
+                  {...register('firstAidOutcome', { required: 'Record whether first aid was given' })}
+                >
+                  <MenuItem value="" disabled>Select…</MenuItem>
+                  <MenuItem value="GIVEN">Given</MenuItem>
+                  <MenuItem value="NOT_REQUIRED">Not required</MenuItem>
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField fullWidth label="First aid notes" {...register('firstAidNotes')} />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Controller
+                  control={control}
+                  name="supervisorInformed"
+                  rules={{ validate: (value) => value === true || 'Confirm the supervisor or safety officer was informed' }}
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={<Checkbox checked={!!field.value} onChange={(_, checked) => field.onChange(checked)} />}
+                      label="The supervisor or safety officer has been informed"
+                    />
+                  )}
+                />
+                {formState.errors.supervisorInformed && (
+                  <Typography variant="caption" color="error" display="block">
+                    {formState.errors.supervisorInformed.message}
+                  </Typography>
+                )}
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField fullWidth label="Supervisor name" {...register('supervisorName')} />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <Controller
+                  control={control}
+                  name="emergencyServicesContacted"
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={<Checkbox checked={!!field.value} onChange={(_, checked) => field.onChange(checked)} />}
+                      label="Emergency services were contacted"
+                    />
+                  )}
+                />
+              </Grid>
+              {emergencyServicesContacted && (
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Which service / reference"
+                    {...register('emergencyServicesDetails', {
+                      validate: (value) =>
+                        !emergencyServicesContacted || !!value?.trim() || 'Record which emergency service was contacted',
+                    })}
+                  />
+                </Grid>
+              )}
             </Grid>
 
             <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={2} mt={3} justifyContent="flex-end">
@@ -618,6 +734,12 @@ function readFileAsDataUrl(file: File): Promise<string> {
 function dataUrlSizeBytes(dataUrl: string): number {
   const base64 = dataUrl.split(',')[1] ?? '';
   return Math.ceil((base64.length * 3) / 4);
+}
+
+function errorMessage(err: unknown): string {
+  const message = (err as { response?: { data?: { message?: string | string[] } } })?.response?.data?.message;
+  if (Array.isArray(message)) return message.join(', ');
+  return message ?? (err as Error)?.message ?? 'Request failed';
 }
 
 function toOptionalNumber(value: unknown): number | undefined {
