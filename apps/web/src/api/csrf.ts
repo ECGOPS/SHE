@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
-import { sameMachineUrl } from './dev-host';
+import { apiBaseUrl } from './dev-host';
 
-const baseURL = sameMachineUrl(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api/v1');
+const baseURL = apiBaseUrl();
 const MUTATING = new Set(['post', 'put', 'patch', 'delete']);
 
 let token: string | null = null;

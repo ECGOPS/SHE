@@ -170,7 +170,7 @@ Successful responses use `{ success, data, timestamp }`. Errors use `{ success: 
 | --- | --- |
 | Passwords | Argon2id hashes. Five failures lock the account for 15 minutes and revoke its sessions. |
 | Sessions | Access token about 15 minutes. Refresh cookie is HttpOnly, SameSite Lax, path `/api/v1/auth`. Idle and absolute timeouts apply. Sessions can be listed and revoked. |
-| CSRF | Cookie `ecg_she_csrf` and header `X-CSRF-Token` on changing requests. |
+| CSRF | Cookie `ecg_she_csrf` and header `X-CSRF-Token` on changing requests. The deployed SPA calls `/api/v1` on the same host so iPhone Safari can store that cookie. |
 | Fresh authentication | Role changes, password changes, and similar privileged actions require a recent sign-in. |
 | Least privilege | Every object is checked for tenant, place, and ownership. Direct API calls are refused the same way as the screens. |
 | Cryptography | AES-256-GCM for health notes and MFA seeds. New ciphertext uses the whole key. A previous key can still open old rows during rotation. Random values come from Node’s CSPRNG. |

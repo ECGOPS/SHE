@@ -16,6 +16,8 @@ import {
 } from '@ecg-she/shared';
 import { endpoints } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
+import { useFormDraft } from '../../offline/useFormDraft';
+import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { SupervisorField } from '../jsa/ChoiceFields';
 
 const UNITS = ['dB(A)', 'mg/m3', 'mSv/year', '°C'];
@@ -59,6 +61,39 @@ export function HealthNewPage() {
   const [clinician, setClinician] = useState('');
   const [clinicalNotes, setClinicalNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: 'health-new',
+    userId: session?.user.id,
+    value: {
+      regionId, districtId, recordType, employeeId, recordDate, nextReviewDate, duty, fitnessOutcome,
+      restrictions, surveillanceTest, exposureAgent, reading, unit, locationName, vaccine, vaccineDetail,
+      dose, batchNumber, campaignTitle, attendeeCount, clinician, clinicalNotes,
+    },
+    restore: (data) => {
+      if (typeof data.regionId === 'string') setRegionId(data.regionId);
+      if (typeof data.districtId === 'string') setDistrictId(data.districtId);
+      if (data.recordType) setRecordType(data.recordType);
+      if (typeof data.employeeId === 'string') setEmployeeId(data.employeeId);
+      if (typeof data.recordDate === 'string') setRecordDate(data.recordDate);
+      if (typeof data.nextReviewDate === 'string') setNextReviewDate(data.nextReviewDate);
+      if (typeof data.duty === 'string') setDuty(data.duty);
+      if (typeof data.fitnessOutcome === 'string') setFitnessOutcome(data.fitnessOutcome);
+      if (typeof data.restrictions === 'string') setRestrictions(data.restrictions);
+      if (typeof data.surveillanceTest === 'string') setSurveillanceTest(data.surveillanceTest);
+      if (typeof data.exposureAgent === 'string') setExposureAgent(data.exposureAgent);
+      if (typeof data.reading === 'string') setReading(data.reading);
+      if (typeof data.unit === 'string') setUnit(data.unit);
+      if (typeof data.locationName === 'string') setLocationName(data.locationName);
+      if (typeof data.vaccine === 'string') setVaccine(data.vaccine);
+      if (typeof data.vaccineDetail === 'string') setVaccineDetail(data.vaccineDetail);
+      if (typeof data.dose === 'string') setDose(data.dose);
+      if (typeof data.batchNumber === 'string') setBatchNumber(data.batchNumber);
+      if (typeof data.campaignTitle === 'string') setCampaignTitle(data.campaignTitle);
+      if (typeof data.attendeeCount === 'string') setAttendeeCount(data.attendeeCount);
+      if (typeof data.clinician === 'string') setClinician(data.clinician);
+      if (typeof data.clinicalNotes === 'string') setClinicalNotes(data.clinicalNotes);
+    },
+  });
 
   const regions = useQuery({ queryKey: ['regions'], queryFn: endpoints.regions });
   const districts = useQuery({
@@ -94,7 +129,10 @@ export function HealthNewPage() {
       clinician: clinician.trim() || undefined,
       clinicalNotes: clinicalNotes.trim() || undefined,
     }),
-    onSuccess: (record) => navigate(`/health/${record.id}`),
+    onSuccess: async (record) => {
+      await clear();
+      navigate(`/health/${record.id}`);
+    },
     onError: (err) => setError(errorMessage(err)),
   });
 
@@ -110,6 +148,37 @@ export function HealthNewPage() {
       <Typography variant="body2" color="text.secondary">
         The fitness result, the restriction, and the next review date are the certificate. The clinical note stays with the people who record health.
       </Typography>
+      <FormDraftBanner
+        hasDraft={hasDraft}
+        restoredAt={restoredAt}
+        savedAt={savedAt}
+        noun="health record"
+        onDiscard={() => {
+          setRegionId(session?.user.regionId ?? '');
+          setDistrictId(session?.user.districtId ?? '');
+          setRecordType('FITNESS_FOR_DUTY');
+          setEmployeeId('');
+          setRecordDate(new Date().toISOString().slice(0, 10));
+          setNextReviewDate('');
+          setDuty('');
+          setFitnessOutcome('');
+          setRestrictions('');
+          setSurveillanceTest('');
+          setExposureAgent('');
+          setReading('');
+          setUnit('dB(A)');
+          setLocationName('');
+          setVaccine('');
+          setVaccineDetail('');
+          setDose('');
+          setBatchNumber('');
+          setCampaignTitle('');
+          setAttendeeCount('');
+          setClinician('');
+          setClinicalNotes('');
+          void discard();
+        }}
+      />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
       <Card>
         <CardContent>

@@ -5,6 +5,8 @@ import { Alert, Button, Card, CardContent, MenuItem, Stack, TextField, Typograph
 import { NFPA_70E_PPE_CATEGORY, PPE_ANSI_STANDARDS, PPE_EN_STANDARDS, isDistrictScope, isRegionalScope, isSafetyOfficer } from '@ecg-she/shared';
 import { endpoints } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
+import { useFormDraft } from '../../offline/useFormDraft';
+import { FormDraftBanner } from '../../components/FormDraftBanner';
 
 const CATEGORIES = ['HEAD', 'EYE', 'EAR', 'HAND', 'FOOT', 'BODY', 'FALL_PROTECTION', 'RESPIRATORY', 'INSULATING'];
 const VOLTAGE = ['CLASS_00', 'CLASS_0', 'CLASS_1', 'CLASS_2', 'CLASS_3', 'CLASS_4'];
@@ -41,6 +43,31 @@ export function PpeItemNewPage() {
   const [manufacturer, setManufacturer] = useState('');
   const [modelNumber, setModelNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: 'ppe-item-new',
+    userId: session?.user.id,
+    value: {
+      regionId, districtId, sku, name, category, stockOnHand, reorderLevel, shelfLifeMonths,
+      retestIntervalMonths, voltageClass, enStandard, ansiStandard, nfpaArcCategory, manufacturer, modelNumber,
+    },
+    restore: (data) => {
+      if (typeof data.regionId === 'string') setRegionId(data.regionId);
+      if (typeof data.districtId === 'string') setDistrictId(data.districtId);
+      if (typeof data.sku === 'string') setSku(data.sku);
+      if (typeof data.name === 'string') setName(data.name);
+      if (typeof data.category === 'string') setCategory(data.category);
+      if (typeof data.stockOnHand === 'string') setStockOnHand(data.stockOnHand);
+      if (typeof data.reorderLevel === 'string') setReorderLevel(data.reorderLevel);
+      if (typeof data.shelfLifeMonths === 'string') setShelfLifeMonths(data.shelfLifeMonths);
+      if (typeof data.retestIntervalMonths === 'string') setRetestIntervalMonths(data.retestIntervalMonths);
+      if (typeof data.voltageClass === 'string') setVoltageClass(data.voltageClass);
+      if (typeof data.enStandard === 'string') setEnStandard(data.enStandard);
+      if (typeof data.ansiStandard === 'string') setAnsiStandard(data.ansiStandard);
+      if (typeof data.nfpaArcCategory === 'string') setNfpaArcCategory(data.nfpaArcCategory);
+      if (typeof data.manufacturer === 'string') setManufacturer(data.manufacturer);
+      if (typeof data.modelNumber === 'string') setModelNumber(data.modelNumber);
+    },
+  });
   const regions = useQuery({ queryKey: ['regions'], queryFn: endpoints.regions });
   const districts = useQuery({ queryKey: ['districts', regionId], queryFn: () => endpoints.districts(regionId), enabled: !!regionId });
   const needsRetest = category === 'INSULATING' || category === 'FALL_PROTECTION';
@@ -64,7 +91,10 @@ export function PpeItemNewPage() {
       regionId,
       districtId: districtId || undefined,
     }),
-    onSuccess: (item) => navigate(`/ppe/${item.id}`),
+    onSuccess: async (item) => {
+      await clear();
+      navigate(`/ppe/${item.id}`);
+    },
     onError: (err) => setError(errorMessage(err)),
   });
 
@@ -79,6 +109,30 @@ export function PpeItemNewPage() {
       <Typography variant="body2" color="text.secondary">
         This is the part in the store. Issuing it to a person happens on the next screen.
       </Typography>
+      <FormDraftBanner
+        hasDraft={hasDraft}
+        restoredAt={restoredAt}
+        savedAt={savedAt}
+        noun="PPE item"
+        onDiscard={() => {
+          setRegionId(session?.user.regionId ?? '');
+          setDistrictId(session?.user.districtId ?? '');
+          setSku('');
+          setName('');
+          setCategory('HAND');
+          setStockOnHand('0');
+          setReorderLevel('0');
+          setShelfLifeMonths('');
+          setRetestIntervalMonths('');
+          setVoltageClass('');
+          setEnStandard('');
+          setAnsiStandard('');
+          setNfpaArcCategory('');
+          setManufacturer('');
+          setModelNumber('');
+          void discard();
+        }}
+      />
       {error && <Alert severity="error">{error}</Alert>}
       <Card>
         <CardContent>

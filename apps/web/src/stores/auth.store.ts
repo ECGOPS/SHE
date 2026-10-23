@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import axios from 'axios';
 import type { AuthTokens, AuthUser } from '@ecg-she/shared';
 import { ENTRA_ENABLED, apiTokenRequest, loginRequest, msalInstance } from '../auth/msal';
-import { sameMachineUrl } from '../api/dev-host';
+import { apiBaseUrl } from '../api/dev-host';
 import { installCsrf } from '../api/csrf';
 
 interface Session {
@@ -37,7 +37,7 @@ interface AuthState {
 }
 
 const LEGACY_STORAGE_KEY = 'ecg-she.session';
-const baseURL = sameMachineUrl(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api/v1');
+const baseURL = apiBaseUrl();
 const raw = axios.create({ baseURL, timeout: 15_000, withCredentials: true });
 installCsrf(raw);
 

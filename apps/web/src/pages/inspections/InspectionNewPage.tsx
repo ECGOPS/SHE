@@ -31,6 +31,8 @@ import {
 import { endpoints } from '../../api/endpoints';
 import { isRasterImageType, safeImageSrc } from '../../security/output';
 import { useAuthStore } from '../../stores/auth.store';
+import { useFormDraft } from '../../offline/useFormDraft';
+import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { INSPECTION_CHECKLISTS, OUTDOOR_INSPECTIONS, PRE_USE_INSPECTIONS } from './checklists';
 
 type Answer = '' | 'PASS' | 'FAIL' | 'NA';
@@ -88,6 +90,25 @@ export function InspectionNewPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: 'inspection-new',
+    userId: session?.user.id,
+    value: { regionId, districtId, type, asset, inspectedAt, weather, temperature, boundary, ppe, observations, rows, photos },
+    restore: (data) => {
+      if (typeof data.regionId === 'string') setRegionId(data.regionId);
+      if (typeof data.districtId === 'string') setDistrictId(data.districtId);
+      if (data.type) setType(data.type);
+      if (typeof data.asset === 'string') setAsset(data.asset);
+      if (typeof data.inspectedAt === 'string') setInspectedAt(data.inspectedAt);
+      if (typeof data.weather === 'string') setWeather(data.weather);
+      if (typeof data.temperature === 'string') setTemperature(data.temperature);
+      if (typeof data.boundary === 'string') setBoundary(data.boundary);
+      if (typeof data.ppe === 'string') setPpe(data.ppe);
+      if (typeof data.observations === 'string') setObservations(data.observations);
+      if (Array.isArray(data.rows) && data.rows.length) setRows(data.rows);
+      if (Array.isArray(data.photos)) setPhotos(data.photos);
+    },
+  });
 
   const outdoor = OUTDOOR_INSPECTIONS.includes(type);
   const types = staff ? PRE_USE_INSPECTIONS : Object.values(InspectionType);
@@ -124,7 +145,10 @@ export function InspectionNewPage() {
         })),
         photos: photos.length ? photos : undefined,
       }),
-    onSuccess: (record) => navigate(`/inspections/${record.id}`),
+    onSuccess: async (record) => {
+      await clear();
+      navigate(`/inspections/${record.id}`);
+    },
     onError: (err) => setError(errorMessage(err)),
   });
 
@@ -244,6 +268,28 @@ export function InspectionNewPage() {
       <Typography variant="body2" color="text.secondary">
         Walk the checklist. A fail stays open until it is corrected on the spot, or raised as a hazard or a corrective action.
       </Typography>
+      <FormDraftBanner
+        hasDraft={hasDraft}
+        restoredAt={restoredAt}
+        savedAt={savedAt}
+        noun="inspection"
+        onDiscard={() => {
+          setRegionId(session?.user.regionId ?? '');
+          setDistrictId(session?.user.districtId ?? '');
+          const nextType = staff ? InspectionType.VEHICLE : InspectionType.SUBSTATION;
+          setType(nextType);
+          setAsset('');
+          setInspectedAt(new Date().toISOString().slice(0, 16));
+          setWeather('');
+          setTemperature('');
+          setBoundary('');
+          setPpe('');
+          setObservations('');
+          setRows(rowsFor(nextType));
+          setPhotos([]);
+          void discard();
+        }}
+      />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
       <Card>
         <CardContent>

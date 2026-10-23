@@ -2,6 +2,14 @@
   command = "npm ci && npm run build --workspace=@ecg-she/web"
   publish = "apps/web/dist"
 
+# Same-host API so iPhone Safari keeps the CSRF cookie. Safari blocks cookies
+# from another site (the page on Netlify, the API on Render).
+[[redirects]]
+  from = "/api/v1/*"
+  to = "https://ecg-she-api.onrender.com/api/v1/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

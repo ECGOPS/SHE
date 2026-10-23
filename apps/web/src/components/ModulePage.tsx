@@ -21,11 +21,13 @@ import {
 import { DataGrid, GridColDef, GridRenderCellParams, GridValidRowModel } from '@mui/x-data-grid';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { isDistrictScope, isRegionalScope, isSafetyOfficer, reportsInChosenPlace } from '@ecg-she/shared';
 import { useAuthStore } from '../stores/auth.store';
 import { endpoints } from '../api/endpoints';
 import { offlineQueue } from '../offline/queue';
+import { useFormDraft } from '../offline/useFormDraft';
+import { FormDraftBanner } from './FormDraftBanner';
 import { MobilePageBar, PageQuery, RecordSearch, useServerPage } from './server-page';
 import { isRasterImageType, safeImageSrc } from '../security/output';
 
@@ -175,12 +177,30 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
     return out;
   }, [renderedFormFields, session]);
 
-  const { register, handleSubmit, reset, formState, watch, setValue } = useForm<Record<string, unknown>>({
+  const { control, register, handleSubmit, reset, formState, watch, setValue } = useForm<Record<string, unknown>>({
+    shouldUnregister: false,
     defaultValues: defaults,
   });
 
-  const selectedRegionId = String(watch('regionId') ?? '');
-  const selectedDistrictId = String(watch('districtId') ?? '');
+  const formValues = watch();
+  const selectedRegionId = String(formValues.regionId ?? '');
+  const selectedDistrictId = String(formValues.districtId ?? '');
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: `${queryKey}-new`,
+    userId: session?.user.id,
+    value: { form: formValues, photos },
+    enabled: !createPath,
+    restore: (data) => {
+      if (data.form) {
+        const next = { ...defaults, ...data.form };
+        reset(next, { keepDefaultValues: true });
+        for (const [name, value] of Object.entries(next)) {
+          setValue(name, value, { shouldDirty: true });
+        }
+      }
+      if (Array.isArray(data.photos)) setPhotos(data.photos);
+    },
+  });
   const role = session?.user.role;
   const lockedToRegion = !!role && isSafetyOfficer(role) && (isRegionalScope(role) || isDistrictScope(role));
   const lockedToDistrict = !!role && isSafetyOfficer(role) && isDistrictScope(role);
@@ -190,18 +210,24 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
     queryFn: () => endpoints.regions(),
     enabled: renderedFormFields.some((f) => f.name === 'regionId' && f.type === 'select'),
   });
-  const { data: districts = [] } = useQuery({
+  const districtsQuery = useQuery({
     queryKey: ['districts', selectedRegionId],
     queryFn: () => endpoints.districts(selectedRegionId),
     enabled: renderedFormFields.some((f) => f.name === 'districtId') && !!selectedRegionId,
   });
+  const districts = districtsQuery.data ?? [];
 
   useEffect(() => {
-    if (!selectedDistrictId || districts.length === 0) return;
-    if (!districts.some((d) => d.id === selectedDistrictId)) {
+    if (restoredAt && !createPath) setDialogOpen(true);
+  }, [createPath, restoredAt]);
+
+  useEffect(() => {
+    if (!selectedRegionId || districtsQuery.isFetching || !districtsQuery.isSuccess) return;
+    if (districts.length === 0) return;
+    if (selectedDistrictId && !districts.some((d) => d.id === selectedDistrictId)) {
       setValue('districtId', '');
     }
-  }, [districts, selectedDistrictId, setValue]);
+  }, [districts, districtsQuery.isFetching, districtsQuery.isSuccess, selectedDistrictId, selectedRegionId, setValue]);
 
   const mutation = useMutation({
     mutationFn: async (values: Record<string, unknown>) => {
@@ -222,7 +248,7 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
         throw err;
       }
     },
-    onSuccess: (created) => {
+    onSuccess: async (created) => {
       const queued = (created as { offline?: boolean })?.offline === true;
       setFeedback({
         kind: 'success',
@@ -234,6 +260,7 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
       setDialogOpen(false);
       setPhotos([]);
       reset(defaults);
+      await clear();
       const id = (created as { id?: string })?.id;
       const path = !queued && id ? createdPath?.({ id }) : undefined;
       if (path) navigate(path);
@@ -422,8 +449,10 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
                 navigate(createPath);
                 return;
               }
-              reset(defaults);
-              setPhotos([]);
+              if (!hasDraft) {
+                reset(defaults);
+                setPhotos([]);
+              }
               setPhotoError(null);
               setCameraError(null);
               setDialogOpen(true);
@@ -433,6 +462,21 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
           </Button>
         )}
       </Stack>
+
+      {!createPath && !dialogOpen && (
+        <FormDraftBanner
+          hasDraft={hasDraft}
+          restoredAt={restoredAt}
+          savedAt={savedAt}
+          noun={title.toLowerCase()}
+          onContinue={() => setDialogOpen(true)}
+          onDiscard={() => {
+            reset(defaults);
+            setPhotos([]);
+            void discard();
+          }}
+        />
+      )}
 
       <RecordSearch value={paging.searchInput} onChange={paging.setSearchInput} />
 
@@ -494,6 +538,17 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
         <Box component="form" onSubmit={submit}>
           <DialogContent dividers>
             <Stack spacing={2}>
+              <FormDraftBanner
+                hasDraft={hasDraft}
+                restoredAt={restoredAt}
+                savedAt={savedAt}
+                noun={title.toLowerCase()}
+                onDiscard={() => {
+                  reset(defaults);
+                  setPhotos([]);
+                  void discard();
+                }}
+              />
               {renderedFormFields.map((f) => {
                 if (f.type === 'info') {
                   return (
@@ -524,26 +579,36 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
                       helperText={
                         f.helperText ?? 'Enter one item per line, or separate with commas.'
                       }
-                      defaultValue={defaults[f.name] ?? ''}
                       {...register(f.name, { required: f.required })}
+                      value={formValues[f.name] ?? ''}
                     />
                   );
                 }
                 if (f.type === 'boolean') {
                   return (
-                    <TextField
+                    <Controller
                       key={f.name}
-                      select
-                      label={f.label}
-                      fullWidth
-                      required={f.required}
-                      helperText={f.helperText}
-                      defaultValue={String(defaults[f.name] ?? 'false')}
-                      {...register(f.name, { required: f.required })}
-                    >
-                      <MenuItem value="false">No</MenuItem>
-                      <MenuItem value="true">Yes</MenuItem>
-                    </TextField>
+                      control={control}
+                      name={f.name}
+                      rules={{ required: f.required }}
+                      render={({ field }) => (
+                        <TextField
+                          select
+                          label={f.label}
+                          fullWidth
+                          required={f.required}
+                          helperText={f.helperText}
+                          name={field.name}
+                          inputRef={field.ref}
+                          onBlur={field.onBlur}
+                          value={String(field.value ?? 'false')}
+                          onChange={(e) => field.onChange(e.target.value === 'true')}
+                        >
+                          <MenuItem value="false">No</MenuItem>
+                          <MenuItem value="true">Yes</MenuItem>
+                        </TextField>
+                      )}
+                    />
                   );
                 }
                 if (f.type === 'select') {
@@ -556,39 +621,52 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
                             typeof o === 'string' ? { value: o, label: o.replaceAll('_', ' ') } : o,
                           );
                   return (
-                    <TextField
+                    <Controller
                       key={f.name}
-                      select
-                      label={f.label}
-                      fullWidth
-                      required={f.required || (choosesPlace && (f.name === 'regionId' || f.name === 'districtId'))}
-                      helperText={
-                        f.name === 'districtId' && !selectedRegionId
-                          ? 'Select a region first.'
-                          : choosesPlace && (f.name === 'regionId' || f.name === 'districtId')
-                            ? 'Choose where this happened. The case starts at that district. The safety officer for that district receives it.'
-                          : f.name === 'regionId' && lockedToRegion
-                            ? 'Locked to your assigned region.'
-                            : f.name === 'districtId' && lockedToDistrict
-                              ? 'Locked to your assigned district.'
-                          : f.helperText
-                      }
-                      defaultValue={defaults[f.name] ?? ''}
-                      disabled={
-                        (f.name === 'regionId' && lockedToRegion) ||
-                        (f.name === 'districtId' && (lockedToDistrict || !selectedRegionId))
-                      }
-                      {...register(f.name, {
+                      control={control}
+                      name={f.name}
+                      rules={{
                         required: f.required || (choosesPlace && (f.name === 'regionId' || f.name === 'districtId')),
-                      })}
-                    >
-                      <MenuItem value="">— select —</MenuItem>
-                      {opts.map((o) => (
-                        <MenuItem key={o.value} value={o.value}>
-                          {o.label}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                      }}
+                      render={({ field }) => (
+                        <TextField
+                          select
+                          label={f.label}
+                          fullWidth
+                          required={f.required || (choosesPlace && (f.name === 'regionId' || f.name === 'districtId'))}
+                          helperText={
+                            f.name === 'districtId' && !selectedRegionId
+                              ? 'Select a region first.'
+                              : choosesPlace && (f.name === 'regionId' || f.name === 'districtId')
+                                ? 'Choose where this happened. The case starts at that district. The safety officer for that district receives it.'
+                              : f.name === 'regionId' && lockedToRegion
+                                ? 'Locked to your assigned region.'
+                                : f.name === 'districtId' && lockedToDistrict
+                                  ? 'Locked to your assigned district.'
+                              : f.helperText
+                          }
+                          disabled={
+                            (f.name === 'regionId' && lockedToRegion) ||
+                            (f.name === 'districtId' && (lockedToDistrict || !selectedRegionId))
+                          }
+                          name={field.name}
+                          inputRef={field.ref}
+                          onBlur={field.onBlur}
+                          value={field.value ?? ''}
+                          onChange={field.onChange}
+                        >
+                          <MenuItem value="">— select —</MenuItem>
+                          {opts.map((o) => (
+                            <MenuItem key={o.value} value={o.value}>
+                              {o.label}
+                            </MenuItem>
+                          ))}
+                          {field.value && !opts.some((o) => o.value === field.value) ? (
+                            <MenuItem value={String(field.value)} sx={{ display: 'none' }} />
+                          ) : null}
+                        </TextField>
+                      )}
+                    />
                   );
                 }
                 if (allowLocation && (f.name === 'latitude' || f.name === 'longitude')) {
@@ -606,6 +684,7 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
                           InputLabelProps={{ shrink: true }}
                           inputProps={{ inputMode: 'decimal', title: '' }}
                           {...register('latitude')}
+                          value={formValues.latitude ?? ''}
                         />
                         <TextField
                           label="Longitude"
@@ -614,6 +693,7 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
                           InputLabelProps={{ shrink: true }}
                           inputProps={{ inputMode: 'decimal', title: '' }}
                           {...register('longitude')}
+                          value={formValues.longitude ?? ''}
                         />
                       </Stack>
                       <Button
@@ -654,6 +734,7 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
                     }
                     inputProps={f.type === 'number' ? { step: 'any' } : undefined}
                     {...register(f.name, { required: f.required })}
+                    value={formValues[f.name] ?? ''}
                   />
                 );
               })}

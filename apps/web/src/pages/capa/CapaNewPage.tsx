@@ -5,6 +5,8 @@ import { Alert, Button, Card, CardContent, Checkbox, FormControlLabel, MenuItem,
 import { isDistrictScope, isRegionalScope, isSafetyOfficer } from '@ecg-she/shared';
 import { endpoints } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
+import { useFormDraft } from '../../offline/useFormDraft';
+import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { SupervisorField } from '../jsa/ChoiceFields';
 
 function errorMessage(err: unknown): string {
@@ -30,6 +32,23 @@ export function CapaNewPage() {
   const [protocolUpdateRequired, setProtocolUpdateRequired] = useState(false);
   const [protocolUpdateNotes, setProtocolUpdateNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: 'capa-new',
+    userId: session?.user.id,
+    value: { regionId, districtId, title, description, actionType, priority, dueDate, assigneeId, protocolUpdateRequired, protocolUpdateNotes },
+    restore: (data) => {
+      if (typeof data.regionId === 'string') setRegionId(data.regionId);
+      if (typeof data.districtId === 'string') setDistrictId(data.districtId);
+      if (typeof data.title === 'string') setTitle(data.title);
+      if (typeof data.description === 'string') setDescription(data.description);
+      if (typeof data.actionType === 'string') setActionType(data.actionType);
+      if (typeof data.priority === 'string') setPriority(data.priority);
+      if (typeof data.dueDate === 'string') setDueDate(data.dueDate);
+      if (typeof data.assigneeId === 'string') setAssigneeId(data.assigneeId);
+      if (typeof data.protocolUpdateRequired === 'boolean') setProtocolUpdateRequired(data.protocolUpdateRequired);
+      if (typeof data.protocolUpdateNotes === 'string') setProtocolUpdateNotes(data.protocolUpdateNotes);
+    },
+  });
   const regions = useQuery({ queryKey: ['regions'], queryFn: endpoints.regions });
   const districts = useQuery({ queryKey: ['districts', regionId], queryFn: () => endpoints.districts(regionId), enabled: !!regionId });
   const people = useQuery({ queryKey: ['capa-people'], queryFn: endpoints.capaPeople });
@@ -48,7 +67,10 @@ export function CapaNewPage() {
       protocolUpdateRequired,
       protocolUpdateNotes: protocolUpdateRequired ? protocolUpdateNotes.trim() || undefined : undefined,
     }),
-    onSuccess: (row) => navigate(`/capa/${row.id}`),
+    onSuccess: async (row) => {
+      await clear();
+      navigate(`/capa/${row.id}`);
+    },
     onError: (err) => setError(errorMessage(err)),
   });
 
@@ -63,6 +85,25 @@ export function CapaNewPage() {
       <Typography variant="body2" color="text.secondary">
         Use this for an action from a management review. An action from an incident, hazard, near-miss, inspection, audit, or environmental event is raised on that record.
       </Typography>
+      <FormDraftBanner
+        hasDraft={hasDraft}
+        restoredAt={restoredAt}
+        savedAt={savedAt}
+        noun="action"
+        onDiscard={() => {
+          setRegionId(session?.user.regionId ?? '');
+          setDistrictId(session?.user.districtId ?? '');
+          setTitle('');
+          setDescription('');
+          setActionType('CORRECTIVE_ACTION');
+          setPriority('MEDIUM');
+          setDueDate('');
+          setAssigneeId('');
+          setProtocolUpdateRequired(false);
+          setProtocolUpdateNotes('');
+          void discard();
+        }}
+      />
       {error && <Alert severity="error">{error}</Alert>}
       <Card>
         <CardContent>

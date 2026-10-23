@@ -1,9 +1,9 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { useAuthStore } from '../stores/auth.store';
-import { sameMachineUrl } from './dev-host';
+import { apiBaseUrl } from './dev-host';
 import { installCsrf } from './csrf';
 
-const baseURL = sameMachineUrl(import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api/v1');
+const baseURL = apiBaseUrl();
 
 export const api: AxiosInstance = axios.create({
   baseURL,

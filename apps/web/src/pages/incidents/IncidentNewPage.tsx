@@ -27,6 +27,8 @@ import { IncidentSeverity, IncidentType, isDistrictScope, isRegionalScope, isSaf
 import { endpoints } from '../../api/endpoints';
 import { isRasterImageType, safeImageSrc } from '../../security/output';
 import { offlineQueue } from '../../offline/queue';
+import { useFormDraft } from '../../offline/useFormDraft';
+import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { useAuthStore } from '../../stores/auth.store';
 
 interface FormState {
@@ -97,7 +99,8 @@ export function IncidentNewPage() {
   const streamRef = useRef<MediaStream | null>(null);
   const { data: regions } = useQuery({ queryKey: ['regions'], queryFn: endpoints.regions });
 
-  const { control, register, handleSubmit, watch, formState, setValue } = useForm<FormState>({
+  const { control, register, handleSubmit, watch, formState, setValue, reset } = useForm<FormState>({
+    shouldUnregister: false,
     defaultValues: {
       type: IncidentType.INJURY,
       severity: carriedSeverity,
@@ -126,25 +129,43 @@ export function IncidentNewPage() {
     },
   });
 
-  const regionId = watch('regionId');
-  const emergencyServicesContacted = watch('emergencyServicesContacted');
+  const formValues = watch();
+  const regionId = formValues.regionId;
+  const emergencyServicesContacted = formValues.emergencyServicesContacted;
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: fromNearMiss?.id ? `incident-from:${fromNearMiss.id}` : 'incident-new',
+    userId: session?.user.id,
+    value: { form: formValues, photos },
+    restore: (data) => {
+      if (data.form) {
+        reset(data.form, { keepDefaultValues: true });
+        for (const [name, value] of Object.entries(data.form)) {
+          setValue(name as keyof FormState, value as never, { shouldDirty: true });
+        }
+      }
+      if (Array.isArray(data.photos)) setPhotos(data.photos);
+    },
+  });
   const role = session?.user.role;
   const lockedToRegion = !!role && isSafetyOfficer(role) && (isRegionalScope(role) || isDistrictScope(role));
   const lockedToDistrict = !!role && isSafetyOfficer(role) && isDistrictScope(role);
   const choosesPlace = !!role && reportsInChosenPlace(role);
-  const { data: districts } = useQuery({
+  const districtsQuery = useQuery({
     queryKey: ['districts', regionId],
     queryFn: () => endpoints.districts(regionId),
     enabled: !!regionId,
   });
+  const districts = districtsQuery.data;
 
   useEffect(() => {
-    if (!districts || districts.length === 0) return;
+    if (!regionId || districtsQuery.isFetching || !districtsQuery.isSuccess) return;
+    const list = districtsQuery.data ?? [];
+    if (list.length === 0) return;
     const districtId = watch('districtId');
-    if (districtId && !districts.some((d) => d.id === districtId)) {
+    if (districtId && !list.some((d) => d.id === districtId)) {
       setValue('districtId', '');
     }
-  }, [districts, setValue, watch]);
+  }, [districtsQuery.data, districtsQuery.isFetching, districtsQuery.isSuccess, regionId, setValue, watch]);
 
   const mutation = useMutation({
     mutationFn: async (form: FormState) => {
@@ -186,8 +207,9 @@ export function IncidentNewPage() {
         throw err;
       }
     },
-    onSuccess: (r) => {
+    onSuccess: async (r) => {
       setPhotos([]);
+      await clear();
       if (r?.offline) nav('/incidents', { replace: true });
       else if ('data' in r && r.data) nav(`/incidents/${r.data.id}`);
     },
@@ -355,6 +377,17 @@ export function IncidentNewPage() {
         </Typography>
       </Box>
 
+      <FormDraftBanner
+        hasDraft={hasDraft}
+        restoredAt={restoredAt}
+        savedAt={savedAt}
+        noun="incident report"
+        onDiscard={() => {
+          reset(undefined, { keepDefaultValues: true });
+          setPhotos([]);
+          void discard();
+        }}
+      />
       {!navigator.onLine && (
         <Alert severity="info">You are offline — this report will be queued and synced automatically.</Alert>
       )}
@@ -376,6 +409,7 @@ export function IncidentNewPage() {
                   fullWidth type="datetime-local" label="Occurred at"
                   InputLabelProps={{ shrink: true }}
                   {...register('occurredAt', { required: true })}
+                  value={formValues.occurredAt ?? ''}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 4 }}>
@@ -398,10 +432,14 @@ export function IncidentNewPage() {
                             : undefined
                       }
                       {...field}
+                      value={field.value ?? ''}
                     >
                       {(regions ?? []).map((r) => (
                         <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>
                       ))}
+                      {field.value && !(regions ?? []).some((r) => r.id === field.value) ? (
+                        <MenuItem value={field.value} sx={{ display: 'none' }} />
+                      ) : null}
                     </TextField>
                   )}
                 />
@@ -428,44 +466,54 @@ export function IncidentNewPage() {
                               : undefined
                       }
                       {...field}
+                      value={field.value ?? ''}
                     >
                       {(districts ?? []).map((d) => (
                         <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
+                      ))}
+                      {field.value && !(districts ?? []).some((d) => d.id === field.value) ? (
+                        <MenuItem value={field.value} sx={{ display: 'none' }} />
+                      ) : null}
+                    </TextField>
+                  )}
+                />
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Controller
+                  control={control}
+                  name="type"
+                  rules={{ required: true }}
+                  render={({ field }) => (
+                    <TextField select fullWidth label="Incident type" {...field} value={field.value ?? IncidentType.INJURY}>
+                      {Object.values(IncidentType).map((t) => (
+                        <MenuItem key={t} value={t}>{t.replaceAll('_', ' ')}</MenuItem>
                       ))}
                     </TextField>
                   )}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  select fullWidth label="Incident type"
-                  {...register('type', { required: true })}
-                  defaultValue={IncidentType.INJURY}
-                >
-                  {Object.values(IncidentType).map((t) => (
-                    <MenuItem key={t} value={t}>{t.replaceAll('_', ' ')}</MenuItem>
-                  ))}
-                </TextField>
-              </Grid>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  select fullWidth label="Severity"
-                  {...register('severity', { required: true })}
-                  defaultValue={carriedSeverity}
-                >
-                  {Object.values(IncidentSeverity).map((s) => (
-                    <MenuItem key={s} value={s}>{s}</MenuItem>
-                  ))}
-                </TextField>
+                <Controller
+                  control={control}
+                  name="severity"
+                  rules={{ required: true }}
+                  render={({ field }) => (
+                    <TextField select fullWidth label="Severity" {...field} value={field.value ?? IncidentSeverity.MINOR}>
+                      {Object.values(IncidentSeverity).map((s) => (
+                        <MenuItem key={s} value={s}>{s}</MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                />
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <TextField fullWidth label="Title" {...register('title', { required: true })} />
+                <TextField fullWidth label="Title" {...register('title', { required: true })} value={formValues.title ?? ''} />
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <TextField fullWidth multiline minRows={4} label="Description" {...register('description', { required: true })} />
+                <TextField fullWidth multiline minRows={4} label="Description" {...register('description', { required: true })} value={formValues.description ?? ''} />
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <TextField fullWidth label="Location name" {...register('locationName')} />
+                <TextField fullWidth label="Location name" {...register('locationName')} value={formValues.locationName ?? ''} />
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
@@ -475,6 +523,7 @@ export function IncidentNewPage() {
                   InputLabelProps={{ shrink: true }}
                   inputProps={{ step: 'any', min: -90, max: 90 }}
                   {...register('latitude', { valueAsNumber: true })}
+                  value={Number.isFinite(formValues.latitude) ? formValues.latitude : ''}
                 />
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
@@ -485,6 +534,7 @@ export function IncidentNewPage() {
                   InputLabelProps={{ shrink: true }}
                   inputProps={{ step: 'any', min: -180, max: 180 }}
                   {...register('longitude', { valueAsNumber: true })}
+                  value={Number.isFinite(formValues.longitude) ? formValues.longitude : ''}
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
@@ -574,13 +624,13 @@ export function IncidentNewPage() {
                 </Stack>
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField fullWidth type="number" label="Affected" {...register('affectedPersons', { valueAsNumber: true })} />
+                <TextField fullWidth type="number" label="Affected" {...register('affectedPersons', { valueAsNumber: true })} value={Number.isFinite(formValues.affectedPersons) ? formValues.affectedPersons : 0} />
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField fullWidth type="number" label="Injured" {...register('injuredPersons', { valueAsNumber: true })} />
+                <TextField fullWidth type="number" label="Injured" {...register('injuredPersons', { valueAsNumber: true })} value={Number.isFinite(formValues.injuredPersons) ? formValues.injuredPersons : 0} />
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField fullWidth type="number" label="Fatalities" {...register('fatalities', { valueAsNumber: true })} />
+                <TextField fullWidth type="number" label="Fatalities" {...register('fatalities', { valueAsNumber: true })} value={Number.isFinite(formValues.fatalities) ? formValues.fatalities : 0} />
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <Typography variant="subtitle2" fontWeight={700}>
@@ -609,21 +659,21 @@ export function IncidentNewPage() {
                 )}
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  select
-                  fullWidth
-                  required
-                  label="First aid"
-                  defaultValue=""
-                  {...register('firstAidOutcome', { required: 'Record whether first aid was given' })}
-                >
-                  <MenuItem value="" disabled>Select…</MenuItem>
-                  <MenuItem value="GIVEN">Given</MenuItem>
-                  <MenuItem value="NOT_REQUIRED">Not required</MenuItem>
-                </TextField>
+                <Controller
+                  control={control}
+                  name="firstAidOutcome"
+                  rules={{ required: 'Record whether first aid was given' }}
+                  render={({ field }) => (
+                    <TextField select fullWidth required label="First aid" {...field} value={field.value ?? ''}>
+                      <MenuItem value="" disabled>Select…</MenuItem>
+                      <MenuItem value="GIVEN">Given</MenuItem>
+                      <MenuItem value="NOT_REQUIRED">Not required</MenuItem>
+                    </TextField>
+                  )}
+                />
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField fullWidth label="First aid notes" {...register('firstAidNotes')} />
+                <TextField fullWidth label="First aid notes" {...register('firstAidNotes')} value={formValues.firstAidNotes ?? ''} />
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <Controller
@@ -644,7 +694,7 @@ export function IncidentNewPage() {
                 )}
               </Grid>
               <Grid size={{ xs: 12, md: 6 }}>
-                <TextField fullWidth label="Supervisor name" {...register('supervisorName')} />
+                <TextField fullWidth label="Supervisor name" {...register('supervisorName')} value={formValues.supervisorName ?? ''} />
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <Controller
@@ -668,6 +718,7 @@ export function IncidentNewPage() {
                       validate: (value) =>
                         !emergencyServicesContacted || !!value?.trim() || 'Record which emergency service was contacted',
                     })}
+                    value={formValues.emergencyServicesDetails ?? ''}
                   />
                 </Grid>
               )}

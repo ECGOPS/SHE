@@ -5,6 +5,8 @@ import { Alert, Button, Card, CardContent, Checkbox, FormControlLabel, MenuItem,
 import { AuditType, isDistrictScope, isRegionalScope, isSafetyOfficer } from '@ecg-she/shared';
 import { endpoints } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
+import { useFormDraft } from '../../offline/useFormDraft';
+import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { CrewPersonField } from '../jsa/ChoiceFields';
 import { AUDIT_METHODS, clausesFor, defaultClauses } from './clauses';
 
@@ -32,6 +34,24 @@ export function AuditNewPage() {
   const [leadId, setLeadId] = useState('');
   const [leadName, setLeadName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: 'audit-new',
+    userId: session?.user.id,
+    value: { regionId, districtId, type, scope, objectives, auditee, scheduledDate, clauses, methods, leadId, leadName },
+    restore: (data) => {
+      if (typeof data.regionId === 'string') setRegionId(data.regionId);
+      if (typeof data.districtId === 'string') setDistrictId(data.districtId);
+      if (data.type) setType(data.type);
+      if (typeof data.scope === 'string') setScope(data.scope);
+      if (typeof data.objectives === 'string') setObjectives(data.objectives);
+      if (typeof data.auditee === 'string') setAuditee(data.auditee);
+      if (typeof data.scheduledDate === 'string') setScheduledDate(data.scheduledDate);
+      if (Array.isArray(data.clauses)) setClauses(data.clauses);
+      if (Array.isArray(data.methods)) setMethods(data.methods);
+      if (typeof data.leadId === 'string') setLeadId(data.leadId);
+      if (typeof data.leadName === 'string') setLeadName(data.leadName);
+    },
+  });
 
   const regions = useQuery({ queryKey: ['regions'], queryFn: endpoints.regions });
   const districts = useQuery({ queryKey: ['districts', regionId], queryFn: () => endpoints.districts(regionId), enabled: !!regionId });
@@ -56,7 +76,10 @@ export function AuditNewPage() {
       leadAuditorId: leadId || undefined,
       leadAuditorName: leadName.trim(),
     }),
-    onSuccess: (record) => navigate(`/audits/${record.id}`),
+    onSuccess: async (record) => {
+      await clear();
+      navigate(`/audits/${record.id}`);
+    },
     onError: (err) => setError(errorMessage(err)),
   });
 
@@ -81,6 +104,26 @@ export function AuditNewPage() {
       <Typography variant="body2" color="text.secondary">
         Name the place, the clauses, how you will gather evidence, and the lead auditor. The visit starts from the audit record.
       </Typography>
+      <FormDraftBanner
+        hasDraft={hasDraft}
+        restoredAt={restoredAt}
+        savedAt={savedAt}
+        noun="audit plan"
+        onDiscard={() => {
+          setRegionId(session?.user.regionId ?? '');
+          setDistrictId(session?.user.districtId ?? '');
+          setType(AuditType.INTERNAL);
+          setScope('');
+          setObjectives('');
+          setAuditee('');
+          setScheduledDate(new Date().toISOString().slice(0, 10));
+          setClauses(defaultClauses(AuditType.INTERNAL));
+          setMethods(['FIELD_VERIFICATION']);
+          setLeadId('');
+          setLeadName('');
+          void discard();
+        }}
+      />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
       <Card>
         <CardContent>

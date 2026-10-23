@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Alert, Autocomplete, Button, Card, CardContent, MenuItem, Stack, TextField, Typography } from '@mui/material';
 import { endpoints } from '../../api/endpoints';
+import { useAuthStore } from '../../stores/auth.store';
+import { useFormDraft } from '../../offline/useFormDraft';
+import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { SupervisorField } from '../jsa/ChoiceFields';
 
 const REASONS = ['NEW_HIRE', 'REPLACEMENT', 'ROUTINE_REFRESH', 'DAMAGED_REPLACEMENT'];
@@ -21,6 +24,7 @@ function words(value: string): string {
 
 export function PpeIssuePage() {
   const navigate = useNavigate();
+  const userId = useAuthStore((s) => s.session?.user.id);
   const [itemSearch, setItemSearch] = useState('');
   const [itemText, setItemText] = useState('');
   useEffect(() => {
@@ -44,6 +48,25 @@ export function PpeIssuePage() {
   const [issueReason, setIssueReason] = useState('ROUTINE_REFRESH');
   const [inspectionResult, setInspectionResult] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: 'ppe-issue',
+    userId,
+    value: {
+      ppeItemId, chosenItem, employeeId, issuedOn, quantity, size, serialNumber, batchNumber, issueReason, inspectionResult,
+    },
+    restore: (data) => {
+      if (typeof data.ppeItemId === 'string') setPpeItemId(data.ppeItemId);
+      if (data.chosenItem) setChosenItem(data.chosenItem);
+      if (typeof data.employeeId === 'string') setEmployeeId(data.employeeId);
+      if (typeof data.issuedOn === 'string') setIssuedOn(data.issuedOn);
+      if (typeof data.quantity === 'string') setQuantity(data.quantity);
+      if (typeof data.size === 'string') setSize(data.size);
+      if (typeof data.serialNumber === 'string') setSerialNumber(data.serialNumber);
+      if (typeof data.batchNumber === 'string') setBatchNumber(data.batchNumber);
+      if (typeof data.issueReason === 'string') setIssueReason(data.issueReason);
+      if (typeof data.inspectionResult === 'string') setInspectionResult(data.inspectionResult);
+    },
+  });
   const item = catalogue.find((row) => row.id === ppeItemId) ?? (chosenItem?.id === ppeItemId ? chosenItem : undefined);
   const serialised = !!item && SERIALISED.has(item.category);
   const sized = !!item && SIZED.has(item.category);
@@ -60,7 +83,10 @@ export function PpeIssuePage() {
       issueReason,
       inspectionResult,
     }),
-    onSuccess: (row) => navigate(`/ppe/${row.ppeItemId}`),
+    onSuccess: async (row) => {
+      await clear();
+      navigate(`/ppe/${row.ppeItemId}`);
+    },
     onError: (err) => setError(errorMessage(err)),
   });
 
@@ -83,6 +109,25 @@ export function PpeIssuePage() {
       <Typography variant="body2" color="text.secondary">
         Stock goes down by the quantity issued. A failed pre-use check stays in the store.
       </Typography>
+      <FormDraftBanner
+        hasDraft={hasDraft}
+        restoredAt={restoredAt}
+        savedAt={savedAt}
+        noun="PPE issue"
+        onDiscard={() => {
+          setPpeItemId('');
+          setChosenItem(null);
+          setEmployeeId('');
+          setIssuedOn(new Date().toISOString().slice(0, 10));
+          setQuantity('1');
+          setSize('');
+          setSerialNumber('');
+          setBatchNumber('');
+          setIssueReason('ROUTINE_REFRESH');
+          setInspectionResult('');
+          void discard();
+        }}
+      />
       {error && <Alert severity="error">{error}</Alert>}
       <Card>
         <CardContent>

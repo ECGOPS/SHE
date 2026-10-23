@@ -5,6 +5,8 @@ import { Alert, Button, Card, CardContent, MenuItem, Stack, TextField, Typograph
 import { HEALTH_DUTY, ISO_45001_CLAUSES, isDistrictScope, isRegionalScope, isSafetyOfficer } from '@ecg-she/shared';
 import { endpoints } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
+import { useFormDraft } from '../../offline/useFormDraft';
+import { FormDraftBanner } from '../../components/FormDraftBanner';
 
 const CATEGORIES = ['SAFETY', 'CERTIFICATION', 'COMPETENCY', 'INDUCTION', 'REFRESHER'];
 
@@ -33,6 +35,28 @@ export function TrainingCourseNewPage() {
   const [accreditationBody, setAccreditationBody] = useState('');
   const [trainerQualification, setTrainerQualification] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: 'training-course-new',
+    userId: session?.user.id,
+    value: {
+      regionId, districtId, code, title, description, category, durationHours, validForMonths,
+      authorizesDuty, clause, accreditationBody, trainerQualification,
+    },
+    restore: (data) => {
+      if (typeof data.regionId === 'string') setRegionId(data.regionId);
+      if (typeof data.districtId === 'string') setDistrictId(data.districtId);
+      if (typeof data.code === 'string') setCode(data.code);
+      if (typeof data.title === 'string') setTitle(data.title);
+      if (typeof data.description === 'string') setDescription(data.description);
+      if (typeof data.category === 'string') setCategory(data.category);
+      if (typeof data.durationHours === 'string') setDurationHours(data.durationHours);
+      if (typeof data.validForMonths === 'string') setValidForMonths(data.validForMonths);
+      if (typeof data.authorizesDuty === 'string') setAuthorizesDuty(data.authorizesDuty);
+      if (typeof data.clause === 'string') setClause(data.clause);
+      if (typeof data.accreditationBody === 'string') setAccreditationBody(data.accreditationBody);
+      if (typeof data.trainerQualification === 'string') setTrainerQualification(data.trainerQualification);
+    },
+  });
   const regions = useQuery({ queryKey: ['regions'], queryFn: endpoints.regions });
   const districts = useQuery({ queryKey: ['districts', regionId], queryFn: () => endpoints.districts(regionId), enabled: !!regionId });
 
@@ -51,7 +75,10 @@ export function TrainingCourseNewPage() {
       accreditationBody: accreditationBody.trim() || undefined,
       trainerQualification: trainerQualification.trim() || undefined,
     }),
-    onSuccess: (course) => navigate(`/training/${course.id}`),
+    onSuccess: async (course) => {
+      await clear();
+      navigate(`/training/${course.id}`);
+    },
     onError: (err) => setError(errorMessage(err)),
   });
 
@@ -66,6 +93,27 @@ export function TrainingCourseNewPage() {
       <Typography variant="body2" color="text.secondary">
         Say which job a pass authorizes. A permit for that job cannot be issued once the pass has expired.
       </Typography>
+      <FormDraftBanner
+        hasDraft={hasDraft}
+        restoredAt={restoredAt}
+        savedAt={savedAt}
+        noun="course"
+        onDiscard={() => {
+          setRegionId(session?.user.regionId ?? '');
+          setDistrictId(session?.user.districtId ?? '');
+          setCode('');
+          setTitle('');
+          setDescription('');
+          setCategory('SAFETY');
+          setDurationHours('8');
+          setValidForMonths('12');
+          setAuthorizesDuty('');
+          setClause('');
+          setAccreditationBody('');
+          setTrainerQualification('');
+          void discard();
+        }}
+      />
       {error && <Alert severity="error">{error}</Alert>}
       <Card>
         <CardContent>

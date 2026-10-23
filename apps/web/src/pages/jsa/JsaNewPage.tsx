@@ -21,6 +21,8 @@ import { RISK_LIKELIHOOD, RISK_SEVERITY, isDistrictScope, isRegionalScope, isSaf
 import { endpoints } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
 import { offlineQueue } from '../../offline/queue';
+import { useFormDraft } from '../../offline/useFormDraft';
+import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { CrewPersonField, ListedMultiField, ListedTextField, SupervisorField } from './ChoiceFields';
 import { PermitField } from './PermitField';
 import { JSA_ACTIVITIES, JSA_CONTROLS, JSA_EMERGENCY, JSA_HAZARDS, JSA_PLACES, JSA_PPE, JSA_STEPS, JSA_TOOLS } from './jsa-choices';
@@ -70,6 +72,26 @@ export function JsaNewPage() {
   const [steps, setSteps] = useState<StepDraft[]>([emptyStep()]);
   const [crew, setCrew] = useState<CrewDraft[]>([{ name: '', userId: '', briefed: false }]);
   const [error, setError] = useState<string | null>(null);
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: 'jsa-new',
+    userId: session?.user.id,
+    value: { regionId, districtId, workActivity, jobLocation, jobDate, supervisorId, ppe, tools, emergency, permitRequired, permitId, steps, crew },
+    restore: (data) => {
+      if (typeof data.regionId === 'string') setRegionId(data.regionId);
+      if (typeof data.districtId === 'string') setDistrictId(data.districtId);
+      if (typeof data.workActivity === 'string') setWorkActivity(data.workActivity);
+      if (typeof data.jobLocation === 'string') setJobLocation(data.jobLocation);
+      if (typeof data.jobDate === 'string') setJobDate(data.jobDate);
+      if (typeof data.supervisorId === 'string') setSupervisorId(data.supervisorId);
+      if (Array.isArray(data.ppe)) setPpe(data.ppe);
+      if (Array.isArray(data.tools)) setTools(data.tools);
+      if (typeof data.emergency === 'string') setEmergency(data.emergency);
+      if (typeof data.permitRequired === 'boolean') setPermitRequired(data.permitRequired);
+      if (typeof data.permitId === 'string') setPermitId(data.permitId);
+      if (Array.isArray(data.steps) && data.steps.length) setSteps(data.steps);
+      if (Array.isArray(data.crew) && data.crew.length) setCrew(data.crew);
+    },
+  });
 
   const regions = useQuery({ queryKey: ['regions'], queryFn: endpoints.regions });
   const districts = useQuery({
@@ -127,7 +149,8 @@ export function JsaNewPage() {
         throw err;
       }
     },
-    onSuccess: (created) => {
+    onSuccess: async (created) => {
+      await clear();
       if (created && 'offline' in created) {
         navigate('/jsa');
         return;
@@ -148,6 +171,28 @@ export function JsaNewPage() {
           Break the job into steps. Each step needs the hazard and the control. The crew acknowledges it before a safety officer accepts it.
         </Typography>
       </Box>
+      <FormDraftBanner
+        hasDraft={hasDraft}
+        restoredAt={restoredAt}
+        savedAt={savedAt}
+        noun="job briefing"
+        onDiscard={() => {
+          setRegionId(session?.user.regionId ?? '');
+          setDistrictId(session?.user.districtId ?? '');
+          setWorkActivity('');
+          setJobLocation('');
+          setJobDate(new Date().toISOString().slice(0, 10));
+          setSupervisorId('');
+          setPpe([]);
+          setTools([]);
+          setEmergency('');
+          setPermitRequired(false);
+          setPermitId('');
+          setSteps([emptyStep()]);
+          setCrew([{ name: '', userId: '', briefed: false }]);
+          void discard();
+        }}
+      />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
       {!navigator.onLine && <Alert severity="info">You are offline. This briefing will be sent when the device is back online.</Alert>}
 

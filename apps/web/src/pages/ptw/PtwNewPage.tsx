@@ -17,6 +17,8 @@ import {
 import { ISOLATION_METHOD, PermitType, isDistrictScope, isRegionalScope, isSafetyOfficer, reportsInChosenPlace } from '@ecg-she/shared';
 import { endpoints } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
+import { useFormDraft } from '../../offline/useFormDraft';
+import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { SupervisorField } from '../jsa/ChoiceFields';
 
 const WATCH_TYPES = new Set<string>([PermitType.HOT_WORK, PermitType.CONFINED_SPACE]);
@@ -66,6 +68,35 @@ export function PtwNewPage() {
   const [standbyPersonId, setStandbyPersonId] = useState('');
   const [authorisingManagerId, setAuthorisingManagerId] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const { hasDraft, restoredAt, savedAt, discard, clear } = useFormDraft({
+    formKey: 'ptw-new',
+    userId: session?.user.id,
+    value: {
+      regionId, districtId, type, workDescription, workLocation, validFrom, validTo, crewSize,
+      isolationMethod, isolationReference, isolationPoints, hazards, controls, ppe, gasTestRequired,
+      holderId, standbyPersonId, authorisingManagerId,
+    },
+    restore: (data) => {
+      if (typeof data.regionId === 'string') setRegionId(data.regionId);
+      if (typeof data.districtId === 'string') setDistrictId(data.districtId);
+      if (typeof data.type === 'string') setType(data.type);
+      if (typeof data.workDescription === 'string') setWorkDescription(data.workDescription);
+      if (typeof data.workLocation === 'string') setWorkLocation(data.workLocation);
+      if (typeof data.validFrom === 'string') setValidFrom(data.validFrom);
+      if (typeof data.validTo === 'string') setValidTo(data.validTo);
+      if (typeof data.crewSize === 'string') setCrewSize(data.crewSize);
+      if (typeof data.isolationMethod === 'string') setIsolationMethod(data.isolationMethod);
+      if (typeof data.isolationReference === 'string') setIsolationReference(data.isolationReference);
+      if (typeof data.isolationPoints === 'string') setIsolationPoints(data.isolationPoints);
+      if (typeof data.hazards === 'string') setHazards(data.hazards);
+      if (typeof data.controls === 'string') setControls(data.controls);
+      if (typeof data.ppe === 'string') setPpe(data.ppe);
+      if (typeof data.gasTestRequired === 'boolean') setGasTestRequired(data.gasTestRequired);
+      if (typeof data.holderId === 'string') setHolderId(data.holderId);
+      if (typeof data.standbyPersonId === 'string') setStandbyPersonId(data.standbyPersonId);
+      if (typeof data.authorisingManagerId === 'string') setAuthorisingManagerId(data.authorisingManagerId);
+    },
+  });
 
   const watch = WATCH_TYPES.has(type);
   const regions = useQuery({ queryKey: ['regions'], queryFn: endpoints.regions });
@@ -98,7 +129,8 @@ export function PtwNewPage() {
         standbyPersonId: standbyPersonId || undefined,
         authorisingManagerId: authorisingManagerId || undefined,
       }),
-    onSuccess: (created) => {
+    onSuccess: async (created) => {
+      await clear();
       const id = (created as { id?: string })?.id;
       navigate(id ? `/ptw/${id}` : '/ptw');
     },
@@ -113,6 +145,35 @@ export function PtwNewPage() {
           A permit covers one shift. A safety officer issues it, and the holder accepts it at the work site before work starts.
         </Typography>
       </Box>
+      <FormDraftBanner
+        hasDraft={hasDraft}
+        restoredAt={restoredAt}
+        savedAt={savedAt}
+        noun="permit"
+        onDiscard={() => {
+          const nextStart = new Date();
+          const nextEnd = new Date(nextStart.getTime() + 8 * 60 * 60 * 1000);
+          setRegionId(session?.user.regionId ?? '');
+          setDistrictId(session?.user.districtId ?? '');
+          setType(PermitType.ELECTRICAL);
+          setWorkDescription('');
+          setWorkLocation('');
+          setValidFrom(localInput(nextStart));
+          setValidTo(localInput(nextEnd));
+          setCrewSize('');
+          setIsolationMethod('');
+          setIsolationReference('');
+          setIsolationPoints('');
+          setHazards('');
+          setControls('');
+          setPpe('');
+          setGasTestRequired(false);
+          setHolderId('');
+          setStandbyPersonId('');
+          setAuthorisingManagerId('');
+          void discard();
+        }}
+      />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
       <Card>
         <CardContent>

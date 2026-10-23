@@ -12,7 +12,7 @@
 > same commit. A Cursor rule
 > (`.cursor/rules/configuration-docs.mdc`) enforces this.
 
-**Last reviewed:** 2026-10-17
+**Last reviewed:** 2026-10-23
 **Schema version:** 6
 
 ---
@@ -279,7 +279,7 @@ them.
 
 | Variable | Default | Purpose |
 | -------- | ------- | ------- |
-| `VITE_API_BASE_URL` | `http://localhost:4000/api/v1` | Base URL the SPA hits for REST. |
+| `VITE_API_BASE_URL` | `http://localhost:4000/api/v1` | Base URL the SPA hits for REST on localhost or a LAN address. A deployed SPA calls `/api/v1` on this same host so iPhone Safari can keep the CSRF cookie; Netlify proxies that path to the API. |
 | `VITE_WS_URL` | `http://localhost:4000` | WebSocket endpoint for real-time. |
 | `VITE_VAPID_PUBLIC_KEY` | empty | Web-push public key (mirror of backend). |
 | `VITE_MAP_TILE_URL` | OpenStreetMap | Leaflet tile-server URL template. |
@@ -404,6 +404,7 @@ Central operating units are flagged with `centralUnit = true` on the
 
 | Date | Change | Author |
 | ---- | ------ | ------ |
+| 2026-10-23 | Deployed SPA uses same-origin `/api/v1` (Netlify proxies to the API) so iPhone Safari can store the CSRF cookie. | Maintainers |
 | 2026-10-19 | v8 — generic server error responses, denied-access audit rows, health-record read audit, append-only audit table, and retention and failure alerts. | Maintainers |
 | 2026-10-19 | v7 — AES-256-GCM key versioning, previous-key decrypt, and TLS 1.2 with certificate checks for the database, Redis, and mail. | Maintainers |
 | 2026-10-17 | v6 — production refuses published JWT / encryption secrets and `BOOTSTRAP_AUTOSEED=true`; `SWAGGER_ENABLED` gates the API docs (off in production). | Maintainers |
