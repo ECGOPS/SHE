@@ -223,11 +223,12 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
 
   useEffect(() => {
     if (!selectedRegionId || districtsQuery.isFetching || !districtsQuery.isSuccess) return;
-    if (districts.length === 0) return;
-    if (selectedDistrictId && !districts.some((d) => d.id === selectedDistrictId)) {
+    const list = districtsQuery.data;
+    if (!list?.length) return;
+    if (selectedDistrictId && !list.some((d) => d.id === selectedDistrictId)) {
       setValue('districtId', '');
     }
-  }, [districts, districtsQuery.isFetching, districtsQuery.isSuccess, selectedDistrictId, selectedRegionId, setValue]);
+  }, [districtsQuery.data, districtsQuery.isFetching, districtsQuery.isSuccess, selectedDistrictId, selectedRegionId, setValue]);
 
   const mutation = useMutation({
     mutationFn: async (values: Record<string, unknown>) => {
