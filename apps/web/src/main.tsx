@@ -5,7 +5,10 @@ import { ThemeProvider, CssBaseline } from '@mui/material';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { theme } from './theme/theme';
 import { App } from './App';
+import { checkForAppUpdate } from './pwa/check-for-update';
 import './index.css';
+
+checkForAppUpdate();
 
 const queryClient = new QueryClient({
   defaultOptions: {

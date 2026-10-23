@@ -59,6 +59,7 @@ export default defineConfig({
       devOptions: { enabled: true, type: 'module' },
       injectManifest: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        globIgnores: ['**/index.html', '**/registerSW.js'],
       },
     }),
   ],

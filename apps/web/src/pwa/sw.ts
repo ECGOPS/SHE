@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 
+import { clientsClaim } from 'workbox-core';
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from 'workbox-strategies';
@@ -10,8 +11,28 @@ declare const self: ServiceWorkerGlobalScope;
 
 cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
+clientsClaim();
 
-// Map tiles
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(caches.delete('api-cache'));
+});
+
+registerRoute(
+  ({ request }) => request.mode === 'navigate',
+  new NetworkFirst({
+    cacheName: 'pages',
+    networkTimeoutSeconds: 3,
+    plugins: [
+      new CacheableResponsePlugin({ statuses: [200] }),
+      new ExpirationPlugin({ maxEntries: 20, maxAgeSeconds: 7 * 24 * 60 * 60 }),
+    ],
+  }),
+);
+
 registerRoute(
   ({ url }) => url.hostname === 'tile.openstreetmap.org',
   new CacheFirst({
@@ -23,7 +44,6 @@ registerRoute(
   }),
 );
 
-// Static fonts and images
 registerRoute(
   ({ request }) => request.destination === 'image' || request.destination === 'font',
   new StaleWhileRevalidate({
@@ -32,7 +52,6 @@ registerRoute(
   }),
 );
 
-// API GETs — network first, cache fallback for read-only views when offline
 registerRoute(
   ({ url, request }) =>
     request.method === 'GET' &&
@@ -48,7 +67,6 @@ registerRoute(
   }),
 );
 
-// Background Sync — let the page-side queue (Dexie) drive replays.
 self.addEventListener('sync', (event: Event) => {
   const evt = event as Event & { tag?: string };
   if (evt.tag === 'ecg-she-sync') {
@@ -58,7 +76,6 @@ self.addEventListener('sync', (event: Event) => {
   }
 });
 
-// Push notifications
 self.addEventListener('push', (event: PushEvent) => {
   const data = event.data?.json() ?? {};
   event.waitUntil(
@@ -75,12 +92,4 @@ self.addEventListener('push', (event: PushEvent) => {
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
   event.notification.close();
   event.waitUntil(self.clients.openWindow('/'));
-});
-
-self.addEventListener('install', () => {
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', () => {
-  void self.clients.claim();
 });
