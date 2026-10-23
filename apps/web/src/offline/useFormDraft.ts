@@ -48,7 +48,7 @@ export function useFormDraft<T>(options: {
   const persist = useCallback(async (next: T, force = false) => {
     if (!userId || !enabled || !hydratedRef.current) return;
     if (pausedRef.current) return;
-    const merged = jsonSafeClone(mergeDraftPreserve(lastDataRef.current as T, next));
+    const merged = jsonSafeClone(mergeDraftPreserve(lastDataRef.current, next));
     const json = snapshot(merged);
     if (!force && json === lastJsonRef.current) return;
     try {

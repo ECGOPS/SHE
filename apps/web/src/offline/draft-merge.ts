@@ -11,15 +11,15 @@ export function isBlankDraftValue(value: unknown): boolean {
  * still hydrating). A key that is present and blank is treated as the person
  * clearing the field.
  */
-export function mergeDraftPreserve<T>(previous: T, next: T): T {
-  if (previous == null) return next;
+export function mergeDraftPreserve<T>(previous: T | null | undefined, next: unknown): T {
+  if (previous == null) return next as T;
   if (next == null) return previous;
 
   if (Array.isArray(previous) || Array.isArray(next)) {
     if (Array.isArray(next) && next.length === 0 && Array.isArray(previous) && previous.length > 0) {
       return previous;
     }
-    return next;
+    return next as T;
   }
 
   if (typeof previous === 'object' && typeof next === 'object') {
@@ -40,7 +40,7 @@ export function mergeDraftPreserve<T>(previous: T, next: T): T {
   if (isBlankDraftValue(next) && next !== '' && !isBlankDraftValue(previous)) {
     return previous;
   }
-  return next;
+  return next as T;
 }
 
 export function jsonSafeClone<T>(value: T): T {
