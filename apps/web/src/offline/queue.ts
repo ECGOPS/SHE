@@ -1,5 +1,6 @@
 import Dexie, { Table } from 'dexie';
 import type { AuthUser } from '@ecg-she/shared';
+import { notifyOfflineQueueChanged } from './sync-events';
 
 /**
  * Offline-first persistence layer backed by IndexedDB (Dexie).
@@ -16,6 +17,10 @@ export interface QueuedRequest {
   createdAt: number;
   attempts: number;
   lastError?: string;
+  /** Who saved it. It is only ever sent while this person is signed in. */
+  userId?: string;
+  /** The server refused it (e.g. not allowed, invalid). Not retried until someone chooses Retry. */
+  rejected?: boolean;
 }
 
 interface CachedSession {
@@ -61,9 +66,27 @@ class OfflineDB extends Dexie {
 
 const db = new OfflineDB();
 
+/**
+ * Whether the signed-in person may send this report. Reports remember who
+ * saved them, so on a shared phone nobody else's report is filed under your
+ * name. Reports saved before that existed (no userId) go with whoever is
+ * signed in, as they always did.
+ */
+export function belongsTo(item: Pick<QueuedRequest, 'userId'>, userId: string | undefined): boolean {
+  return !!userId && (!item.userId || item.userId === userId);
+}
+
+/** The signed-in person, kept up to date by the app shell; stamped on each queued report. */
+let currentUserId: string | undefined;
+export function setQueueUser(userId: string | undefined): void {
+  currentUserId = userId;
+}
+
 export const offlineQueue = {
-  async enqueue(req: Omit<QueuedRequest, 'id' | 'createdAt' | 'attempts'>): Promise<number> {
-    return db.queue.add({ ...req, createdAt: Date.now(), attempts: 0 });
+  async enqueue(req: Omit<QueuedRequest, 'id' | 'createdAt' | 'attempts' | 'userId' | 'rejected'>): Promise<number> {
+    const id = await db.queue.add({ ...req, userId: currentUserId, createdAt: Date.now(), attempts: 0 });
+    notifyOfflineQueueChanged(); // the banner shows the new count straight away
+    return id;
   },
 
   async pending(): Promise<QueuedRequest[]> {
@@ -81,6 +104,18 @@ export const offlineQueue = {
   async incrementAttempt(id: number, error: string): Promise<void> {
     const item = await db.queue.get(id);
     if (item) await db.queue.put({ ...item, attempts: item.attempts + 1, lastError: error });
+  },
+
+  /** The server refused it; keep it (with the reason) but stop retrying it automatically. */
+  async markRejected(id: number, error: string): Promise<void> {
+    const item = await db.queue.get(id);
+    if (item) await db.queue.put({ ...item, attempts: item.attempts + 1, lastError: error, rejected: true });
+  },
+
+  /** Put a refused report back in line to send. */
+  async allowRetry(id: number): Promise<void> {
+    const item = await db.queue.get(id);
+    if (item) await db.queue.put({ ...item, rejected: false });
   },
 };
 

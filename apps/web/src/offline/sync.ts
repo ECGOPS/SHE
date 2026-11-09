@@ -1,6 +1,7 @@
 import { api } from '../api/client';
-import { offlineQueue, type QueuedRequest } from './queue';
+import { belongsTo, offlineQueue, type QueuedRequest } from './queue';
 import { notifyOfflineQueueChanged } from './sync-events';
+import { useAuthStore } from '../stores/auth.store';
 
 const ENDPOINTS: Record<QueuedRequest['kind'], string> = {
   incident: '/incidents',
@@ -22,6 +23,11 @@ function axiosMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'sync failed';
 }
 
+/** The server looked at it and said no; sending it again unchanged won't help. */
+function refused(status: number | undefined): boolean {
+  return status !== undefined && status >= 400 && status < 500 && ![401, 408, 429].includes(status);
+}
+
 async function replayOne(item: QueuedRequest): Promise<'flushed' | 'retry' | 'auth'> {
   if (!item.id) return 'retry';
   const endpoint = ENDPOINTS[item.kind];
@@ -36,18 +42,38 @@ async function replayOne(item: QueuedRequest): Promise<'flushed' | 'retry' | 'au
   } catch (err) {
     const status = axiosStatus(err);
     if (status === 401) return 'auth';
+    if (refused(status)) {
+      await offlineQueue.markRejected(item.id, axiosMessage(err));
+      return 'retry';
+    }
+    // No connection or a server fault: try again on the next pass.
     await offlineQueue.incrementAttempt(item.id, axiosMessage(err));
     return 'retry';
   }
 }
 
+let flushing: Promise<{ flushed: number; remaining: number }> | null = null;
+
 /**
- * Replay queued mutations against the API. Items that succeed are removed.
- * Failed items stay on the device so a later reconnect can retry them.
+ * Send the signed-in person's queued reports. Sent ones are removed; ones
+ * that couldn't reach the server stay for the next pass; ones the server
+ * refused stay with the reason until someone retries or discards them.
  */
-export async function flushOfflineQueue(): Promise<{ flushed: number; remaining: number }> {
-  const items = await offlineQueue.pending();
-  if (items.length === 0) return { flushed: 0, remaining: 0 };
+export function flushOfflineQueue(): Promise<{ flushed: number; remaining: number }> {
+  // One pass at a time: the 30 s timer, sign-in and reconnect can all fire together.
+  flushing ??= flushOnce().finally(() => {
+    flushing = null;
+  });
+  return flushing;
+}
+
+async function flushOnce(): Promise<{ flushed: number; remaining: number }> {
+  // Nobody signed in (e.g. the login screen): nothing can be sent yet.
+  const userId = useAuthStore.getState().session?.user.id;
+  if (!userId) return { flushed: 0, remaining: await offlineQueue.size() };
+
+  const items = (await offlineQueue.pending()).filter((item) => belongsTo(item, userId) && !item.rejected);
+  if (items.length === 0) return { flushed: 0, remaining: await offlineQueue.size() };
 
   let flushed = 0;
   for (const item of items) {
@@ -56,9 +82,8 @@ export async function flushOfflineQueue(): Promise<{ flushed: number; remaining:
     if (result === 'auth') break;
   }
   const remaining = await offlineQueue.size();
-  // Only when something was sent: listeners refresh the lists so queued
-  // reports show up without a reload.
-  if (flushed > 0) notifyOfflineQueueChanged();
+  // Lists refresh when something was sent; the banner updates either way.
+  notifyOfflineQueueChanged({ sent: flushed });
   return { flushed, remaining };
 }
 

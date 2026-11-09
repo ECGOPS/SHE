@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { theme } from './theme/theme';
 import { App } from './App';
 import { checkForAppUpdate } from './pwa/check-for-update';
-import { OFFLINE_QUEUE_EVENT } from './offline/sync-events';
+import { OFFLINE_QUEUE_EVENT, type OfflineQueueChange } from './offline/sync-events';
 import '@fontsource-variable/inter';
 import './index.css';
 
@@ -34,8 +34,8 @@ const queryClient = new QueryClient({
 });
 
 // Reports saved offline were just sent: reload lists and counts so they appear.
-window.addEventListener(OFFLINE_QUEUE_EVENT, () => {
-  void queryClient.invalidateQueries();
+window.addEventListener(OFFLINE_QUEUE_EVENT, (event) => {
+  if ((event as CustomEvent<OfflineQueueChange>).detail?.sent) void queryClient.invalidateQueries();
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
