@@ -30,6 +30,7 @@ import { useFormDraft } from '../offline/useFormDraft';
 import { FormDraftBanner } from './FormDraftBanner';
 import { MobilePageBar, PageQuery, RecordSearch, useServerPage } from './server-page';
 import { isRasterImageType, safeImageSrc } from '../security/output';
+import { pressableCardSx } from '../theme/theme';
 
 export type FormFieldType =
   | 'text'
@@ -917,13 +918,12 @@ function ResponsiveRecordCards<TRow extends GridValidRowModel>({
             }}
             onKeyDown={(e) => {
               if (href && (e.key === 'Enter' || e.key === ' ')) {
+                // Stop Space from scrolling the page before navigating.
+                e.preventDefault();
                 onOpen(href);
               }
             }}
-            sx={{
-              cursor: href ? 'pointer' : 'default',
-              '&:hover': href ? { boxShadow: 3 } : undefined,
-            }}
+            sx={href ? pressableCardSx : undefined}
           >
             <CardContent>
               <Stack spacing={1.25}>

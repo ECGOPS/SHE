@@ -8,6 +8,7 @@ import { endpoints, IncidentDto } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
 import { ISSUE_SCOPE_LABEL, IssueScope } from '@ecg-she/shared';
 import { MobilePageBar, RecordSearch, useServerPage } from '../../components/server-page';
+import { pressableCardSx } from '../../theme/theme';
 
 const SEV_COLOR: Record<string, 'default' | 'warning' | 'error' | 'success'> = {
   NEGLIGIBLE: 'success',
@@ -201,12 +202,13 @@ function MobileIncidentList({
           tabIndex={0}
           onClick={() => onOpen(row.id)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') onOpen(row.id);
+            if (e.key === 'Enter' || e.key === ' ') {
+              // Stop Space from scrolling the page before navigating.
+              e.preventDefault();
+              onOpen(row.id);
+            }
           }}
-          sx={{
-            cursor: 'pointer',
-            '&:hover': { boxShadow: 3 },
-          }}
+          sx={pressableCardSx}
         >
           <CardContent>
             <Stack spacing={1.25}>

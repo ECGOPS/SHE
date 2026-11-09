@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertTitle, Button, Snackbar } from '@mui/material';
 import { useNotificationsStore, InboxNotification } from '../stores/notifications.store';
@@ -26,19 +27,33 @@ export function NotificationsToast() {
   const clearToast = useNotificationsStore((s) => s.clearToast);
   const markRead = useNotificationsStore((s) => s.markRead);
 
-  if (!toast) return null;
-  const route = (toast.payload as { route?: string } | undefined)?.route;
+  // Keep the last toast on screen while the Snackbar plays its exit
+  // transition; unmounting on clear made it vanish without one.
+  const [shown, setShown] = useState(toast);
+  if (toast && toast !== shown) setShown(toast);
+
+  if (!shown) return null;
+  const route = (shown.payload as { route?: string } | undefined)?.route;
 
   return (
     <Snackbar
       open={!!toast}
       autoHideDuration={6000}
-      onClose={() => clearToast()}
+      onClose={(_event, reason) => {
+        // A click elsewhere in the app should not throw away an alert.
+        if (reason === 'clickaway') return;
+        clearToast();
+      }}
       anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-      sx={{ mt: { xs: 7, md: 8 } }}
+      sx={{
+        mt: {
+          xs: 'calc(56px + env(safe-area-inset-top))',
+          md: 'calc(64px + env(safe-area-inset-top))',
+        },
+      }}
     >
       <Alert
-        severity={severity(toast.priority)}
+        severity={severity(shown.priority)}
         onClose={() => clearToast()}
         variant="filled"
         sx={{
@@ -53,7 +68,7 @@ export function NotificationsToast() {
               size="small"
               color="inherit"
               onClick={() => {
-                void markRead(toast.id);
+                void markRead(shown.id);
                 clearToast();
                 navigate(route);
               }}
@@ -63,8 +78,8 @@ export function NotificationsToast() {
           ) : undefined
         }
       >
-        <AlertTitle sx={{ mb: 0.25 }}>{toast.title}</AlertTitle>
-        {toast.body}
+        <AlertTitle sx={{ mb: 0.25 }}>{shown.title}</AlertTitle>
+        {shown.body}
       </Alert>
     </Snackbar>
   );
