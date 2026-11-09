@@ -8,6 +8,12 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, chmodSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
+// Docker / CI installs have no local .git hooks to maintain.
+if (process.env.CI === 'true' || process.env.DOCKER === 'true') {
+  console.log('[hooks] CI/Docker — skip');
+  process.exit(0);
+}
+
 const top = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
 if (top.status !== 0) {
   console.log('[hooks] not a git checkout — skip');

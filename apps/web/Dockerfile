@@ -4,6 +4,9 @@ WORKDIR /workspace
 COPY package.json package-lock.json* ./
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
+# prepare runs install-git-hooks; copy it so npm install does not fail before sources land
+COPY scripts/install-git-hooks.mjs scripts/install-git-hooks.mjs
+ENV DOCKER=true
 RUN npm install --workspaces --include-workspace-root --no-audit --no-fund
 
 COPY packages/shared packages/shared
