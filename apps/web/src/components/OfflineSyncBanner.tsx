@@ -29,7 +29,16 @@ export function OfflineSyncBanner() {
     <Snackbar
       open
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      sx={{ mt: 1, zIndex: 2000 }}
+      sx={{
+        // Sit below the top bar, and let taps pass through: the banner has no
+        // buttons, and on phones it used to cover the menu, bell and account.
+        mt: {
+          xs: 'calc(48px + env(safe-area-inset-top))',
+          md: 'calc(56px + env(safe-area-inset-top))',
+        },
+        zIndex: 2000,
+        pointerEvents: 'none',
+      }}
     >
       <Alert
         severity={online ? 'info' : 'warning'}

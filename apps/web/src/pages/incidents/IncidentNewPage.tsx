@@ -204,7 +204,15 @@ export function IncidentNewPage() {
       try {
         return { offline: false, data: await endpoints.createIncident(payload) } as const;
       } catch (err) {
-        await offlineQueue.enqueue({ kind: 'incident', payload });
+        // No HTTP status means the request never reached the server (signal
+        // dropped mid-send): keep it on the device and report success. A
+        // rejection from the server (e.g. a missing field) is shown instead,
+        // so it isn't queued to fail again forever.
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (!status) {
+          await offlineQueue.enqueue({ kind: 'incident', payload });
+          return { offline: true } as const;
+        }
         throw err;
       }
     },
