@@ -39,7 +39,7 @@ export class IncidentPhotoInputDto {
 export class CreateIncidentDto {
   @ApiProperty({ enum: IncidentType }) @IsEnum(IncidentType) type!: IncidentType;
   @ApiProperty({ enum: IncidentSeverity }) @IsEnum(IncidentSeverity) severity!: IncidentSeverity;
-  @ApiProperty() @IsString() @MaxLength(4000) title!: string;
+  @ApiProperty() @IsString() @MaxLength(256) title!: string;
   @ApiProperty() @IsString() @MaxLength(4000) description!: string;
   @ApiProperty() @IsDateString() occurredAt!: string;
 

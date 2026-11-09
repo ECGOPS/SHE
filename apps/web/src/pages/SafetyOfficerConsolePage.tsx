@@ -654,6 +654,8 @@ export function SafetyOfficerConsolePage() {
           onChange={(_, v) => setTab(v)}
           variant="scrollable"
           scrollButtons="auto"
+          // Show the arrows on phones too, so the hidden tabs are discoverable.
+          allowScrollButtonsMobile
           sx={{ borderBottom: 1, borderColor: 'divider', px: 1 }}
         >
           <Tab label={`Action required (${actionQueue.length})`} />

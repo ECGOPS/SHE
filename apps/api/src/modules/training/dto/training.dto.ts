@@ -21,7 +21,7 @@ const CATEGORIES = ['SAFETY', 'CERTIFICATION', 'COMPETENCY', 'INDUCTION', 'REFRE
 
 export class CreateCourseDto {
   @ApiProperty() @IsString() @MaxLength(4000) code!: string;
-  @ApiProperty() @IsString() @MaxLength(4000) title!: string;
+  @ApiProperty() @IsString() @MaxLength(256) title!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(4000) description?: string;
   @ApiProperty() @IsIn(CATEGORIES) category!: (typeof CATEGORIES)[number];
   @ApiProperty() @Type(() => Number) @IsInt() @Min(1) @Max(400) durationHours!: number;

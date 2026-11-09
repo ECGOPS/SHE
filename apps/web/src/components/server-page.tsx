@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Button, Stack, TextField, Typography } from '@mui/material';
 import { GridPaginationModel } from '@mui/x-data-grid';
+import { formatCount } from './grid-helpers';
 
 export interface PageQuery {
   page: number;
@@ -79,10 +80,10 @@ export function MobilePageBar({
   const start = total === 0 ? 0 : page * pageSize + 1;
   const end = Math.min(total, (page + 1) * pageSize);
   return (
-    <Stack direction="row" alignItems="center" justifyContent="space-between">
+    <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1} useFlexGap>
       <Button disabled={page <= 0} onClick={() => onPage(page - 1)}>Previous</Button>
       <Typography variant="body2" color="text.secondary">
-        {total === 0 ? 'No records' : `${start}–${end} of ${total}`}
+        {total === 0 ? 'No records' : `${formatCount(start)}–${formatCount(end)} of ${formatCount(total)}`}
       </Typography>
       <Button disabled={end >= total} onClick={() => onPage(page + 1)}>Next</Button>
     </Stack>

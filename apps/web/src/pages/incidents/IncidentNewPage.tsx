@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { TITLE_MAX } from '../../components/grid-helpers';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -507,7 +508,13 @@ export function IncidentNewPage() {
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <TextField fullWidth label="Title" {...register('title', { required: true })} value={formValues.title ?? ''} />
+                <TextField
+                  fullWidth
+                  label="Title"
+                  {...register('title', { required: true })}
+                  value={formValues.title ?? ''}
+                  inputProps={{ maxLength: TITLE_MAX }}
+                />
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <TextField fullWidth multiline minRows={4} label="Description" {...register('description', { required: true })} value={formValues.description ?? ''} />

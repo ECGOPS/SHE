@@ -27,7 +27,7 @@ import {
 } from '@ecg-she/shared';
 
 export class CreateHazardDto {
-  @ApiProperty() @IsString() @MaxLength(4000) title!: string;
+  @ApiProperty() @IsString() @MaxLength(256) title!: string;
   @ApiProperty() @IsString() @MaxLength(4000) description!: string;
   @ApiProperty({ enum: HazardCategory }) @IsEnum(HazardCategory) category!: HazardCategory;
 

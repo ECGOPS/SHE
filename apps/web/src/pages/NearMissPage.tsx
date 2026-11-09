@@ -104,6 +104,7 @@ export function NearMissPage() {
       allowLocation
       offlineKind="near-miss"
       rowHref={(row) => `/near-miss/${(row as { id: string }).id}`}
+      secondaryColumns={['category', 'reportedBy']}
       createdPath={(created) => (created.id ? `/near-miss/${created.id}` : undefined)}
       formFields={[
         {

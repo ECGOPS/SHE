@@ -1,12 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Button, Card, Chip, Stack, Typography } from '@mui/material';
+import { Button, Card, Chip, Stack, Typography, useMediaQuery } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Permission } from '@ecg-she/shared';
 import { endpoints } from '../api/endpoints';
 import { useAuthStore } from '../stores/auth.store';
-import { regionCol } from '../components/ModulePage';
-import { RecordSearch, useServerPage } from '../components/server-page';
+import { ResponsiveRecordCards, regionCol } from '../components/ModulePage';
+import { TABLE_MIN_WIDTH_QUERY, fitColumns, formatDate, gridLocaleText } from '../components/grid-helpers';
+import { MobilePageBar, RecordSearch, useServerPage } from '../components/server-page';
 
 function words(value: unknown): string {
   return String(value ?? '').replaceAll('_', ' ');
@@ -28,7 +29,7 @@ const cols: GridColDef[] = [
   { field: 'title', headerName: 'Action', flex: 1, minWidth: 220 },
   { field: 'sourceType', headerName: 'Raised from', width: 170, valueFormatter: (value) => words(value) },
   { field: 'actionType', headerName: 'Type', width: 170, valueFormatter: (value) => words(value) },
-  { field: 'dueDate', headerName: 'Due', width: 130, valueFormatter: (value) => (value ? String(value).slice(0, 10) : '') },
+  { field: 'dueDate', headerName: 'Due', width: 130, valueFormatter: (value) => formatDate(value) },
   {
     field: 'status',
     headerName: 'Status',
@@ -37,8 +38,12 @@ const cols: GridColDef[] = [
   },
 ];
 
+/** Columns that shrink to fit the table's width instead of scrolling sideways. */
+const tableColumns = fitColumns(cols);
+
 export function CapaPage() {
   const navigate = useNavigate();
+  const compact = !useMediaQuery(TABLE_MIN_WIDTH_QUERY);
   const canCreate = (useAuthStore((s) => s.session?.user.permissions) ?? []).includes(Permission.CAPA_CREATE);
   const paging = useServerPage();
   const list = useQuery({
@@ -61,22 +66,36 @@ export function CapaPage() {
         {canCreate && <Button variant="contained" onClick={() => navigate('/capa/new')}>New action</Button>}
       </Stack>
       <RecordSearch value={paging.searchInput} onChange={paging.setSearchInput} />
-      <Card sx={{ p: 0, overflow: 'hidden' }}>
-        <DataGrid
-          rows={rows}
-          columns={cols}
-          loading={list.isLoading}
-          autoHeight
-          disableRowSelectionOnClick
-          paginationMode="server"
-          rowCount={total}
-          paginationModel={{ page: paging.page, pageSize: paging.pageSize }}
-          onPaginationModelChange={paging.onPaginationModelChange}
-          pageSizeOptions={[10, 25, 50, 100]}
-          onRowClick={(params) => navigate(`/capa/${params.id}`)}
-          sx={{ '& .MuiDataGrid-row': { cursor: 'pointer' } }}
-        />
-      </Card>
+      {compact ? (
+        <Stack spacing={1}>
+          <ResponsiveRecordCards
+            rows={rows}
+            columns={cols}
+            loading={list.isLoading}
+            rowHref={(row) => `/capa/${row.id}`}
+            onOpen={navigate}
+          />
+          <MobilePageBar page={paging.page} pageSize={paging.pageSize} total={total} onPage={paging.setPage} />
+        </Stack>
+      ) : (
+        <Card sx={{ p: 0, overflow: 'hidden' }}>
+          <DataGrid
+            rows={rows}
+            columns={tableColumns}
+            localeText={gridLocaleText}
+            loading={list.isLoading}
+            autoHeight
+            disableRowSelectionOnClick
+            paginationMode="server"
+            rowCount={total}
+            paginationModel={{ page: paging.page, pageSize: paging.pageSize }}
+            onPaginationModelChange={paging.onPaginationModelChange}
+            pageSizeOptions={[10, 25, 50, 100]}
+            onRowClick={(params) => navigate(`/capa/${params.id}`)}
+            sx={{ '& .MuiDataGrid-row': { cursor: 'pointer' } }}
+          />
+        </Card>
+      )}
     </Stack>
   );
 }
