@@ -17,7 +17,7 @@ const SOURCE_TYPES = [
 ] as const;
 
 export class CreateCapaDto {
-  @ApiProperty() @IsString() @MaxLength(4000) title!: string;
+  @ApiProperty() @IsString() @MaxLength(256) title!: string;
   @ApiProperty() @IsString() @MaxLength(4000) description!: string;
   @ApiPropertyOptional() @IsOptional() @IsIn(SOURCE_TYPES) sourceType?: (typeof SOURCE_TYPES)[number];
   @ApiPropertyOptional() @IsOptional() @IsUUID() sourceId?: string;

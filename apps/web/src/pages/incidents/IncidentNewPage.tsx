@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { TITLE_MAX } from '../../components/grid-helpers';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -28,6 +29,7 @@ import { endpoints } from '../../api/endpoints';
 import { isRasterImageType, safeImageSrc } from '../../security/output';
 import { offlineQueue } from '../../offline/queue';
 import { useFormDraft } from '../../offline/useFormDraft';
+import { useOnline } from '../../offline/useOnline';
 import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { useAuthStore } from '../../stores/auth.store';
 
@@ -66,6 +68,8 @@ interface IncidentPhotoPayload {
 
 export function IncidentNewPage() {
   const nav = useNavigate();
+  // Re-renders when the signal drops or returns, so the offline notice stays accurate.
+  const online = useOnline();
   const theme = useTheme();
   const fullScreenDialog = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
@@ -203,7 +207,15 @@ export function IncidentNewPage() {
       try {
         return { offline: false, data: await endpoints.createIncident(payload) } as const;
       } catch (err) {
-        await offlineQueue.enqueue({ kind: 'incident', payload });
+        // No HTTP status means the request never reached the server (signal
+        // dropped mid-send): keep it on the device and report success. A
+        // rejection from the server (e.g. a missing field) is shown instead,
+        // so it isn't queued to fail again forever.
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (!status) {
+          await offlineQueue.enqueue({ kind: 'incident', payload });
+          return { offline: true } as const;
+        }
         throw err;
       }
     },
@@ -388,7 +400,7 @@ export function IncidentNewPage() {
           void discard();
         }}
       />
-      {!navigator.onLine && (
+      {!online && (
         <Alert severity="info">You are offline — this report will be queued and synced automatically.</Alert>
       )}
       {mutation.isError && (
@@ -507,7 +519,13 @@ export function IncidentNewPage() {
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
-                <TextField fullWidth label="Title" {...register('title', { required: true })} value={formValues.title ?? ''} />
+                <TextField
+                  fullWidth
+                  label="Title"
+                  {...register('title', { required: true })}
+                  value={formValues.title ?? ''}
+                  inputProps={{ maxLength: TITLE_MAX }}
+                />
               </Grid>
               <Grid size={{ xs: 12 }}>
                 <TextField fullWidth multiline minRows={4} label="Description" {...register('description', { required: true })} value={formValues.description ?? ''} />

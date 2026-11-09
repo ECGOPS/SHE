@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  /* No gray flash over tapped elements; buttons give their own press feedback. */
+  -webkit-tap-highlight-color: transparent;
+  /* No font inflation when the phone turns to landscape. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Fire taps straight away instead of waiting to see if it's a double-tap zoom. */
+button, a, [role="button"], .MuiButtonBase-root {
+  touch-action: manipulation;
+}
+
+/* Long-pressing a control shouldn't select its label or pop the link callout.
+   Content (record cards, reference codes, body text) stays selectable. */
+button, .MuiButtonBase-root, .MuiChip-root {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 html, body, #root {
   height: 100%;
   max-width: 100%;

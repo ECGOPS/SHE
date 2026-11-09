@@ -18,7 +18,13 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { DataGrid, GridColDef, GridRenderCellParams, GridValidRowModel } from '@mui/x-data-grid';
+import {
+  DataGrid,
+  GridColDef,
+  GridColumnVisibilityModel,
+  GridRenderCellParams,
+  GridValidRowModel,
+} from '@mui/x-data-grid';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
@@ -31,6 +37,16 @@ import { FormDraftBanner } from './FormDraftBanner';
 import { MobilePageBar, PageQuery, RecordSearch, useServerPage } from './server-page';
 import { isRasterImageType, safeImageSrc } from '../security/output';
 import { pressableCardSx } from '../theme/theme';
+import {
+  TABLE_MIN_WIDTH_QUERY,
+  TITLE_MAX,
+  clampLines,
+  fitColumns,
+  formatCount,
+  formatDate,
+  formatDateTime,
+  gridLocaleText,
+} from './grid-helpers';
 
 export type FormFieldType =
   | 'text'
@@ -52,6 +68,8 @@ export interface FormField {
   required?: boolean;
   options?: { value: string; label: string }[] | readonly string[];
   helperText?: string;
+  /** Longest value the server stores. Titles default to 256 (the column size). */
+  maxLength?: number;
   defaultValue?: unknown;
   /** Computed default value (e.g. region-from-user). Wins over `defaultValue`. */
   computeDefault?: (user: ReturnType<typeof useAuthStore.getState>['session']) => unknown;
@@ -88,6 +106,8 @@ export interface ModulePageConfig<TRow extends GridValidRowModel = GridValidRowM
   allowLocation?: boolean;
   /** Open this path after a report is saved on the server. */
   createdPath?: (created: { id?: string }) => string | undefined;
+  /** Table columns hidden on narrower desktops (still shown on the detail page and in the column menu). */
+  secondaryColumns?: string[];
 }
 
 /**
@@ -115,13 +135,22 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
   allowPhotos,
   allowLocation,
   createdPath,
+  secondaryColumns,
 }: ModulePageConfig<TRow>) {
   const navigate = useNavigate();
   const session = useAuthStore((s) => s.session);
   const can = !permission || (session?.user.permissions ?? []).includes(permission);
   const qc = useQueryClient();
   const theme = useTheme();
-  const compact = useMediaQuery(theme.breakpoints.down('lg'));
+  const compact = !useMediaQuery(TABLE_MIN_WIDTH_QUERY);
+  const tableColumns = useMemo(() => fitColumns(columns), [columns]);
+  const roomy = useMediaQuery('(min-width: 1700px)');
+  // The user's own show/hide choices from the column menu win over the default.
+  const [columnChoices, setColumnChoices] = useState<GridColumnVisibilityModel>({});
+  const columnVisibility = useMemo(() => {
+    const hidden = roomy ? {} : Object.fromEntries((secondaryColumns ?? []).map((f) => [f, false]));
+    return { ...hidden, ...columnChoices };
+  }, [roomy, secondaryColumns, columnChoices]);
   const fullScreenForm = useMediaQuery(theme.breakpoints.down('sm'));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; msg: string } | null>(null);
@@ -510,7 +539,9 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
             <DataGrid
               rows={rows}
-              columns={columns}
+              columns={tableColumns}
+              columnVisibilityModel={columnVisibility}
+              onColumnVisibilityModelChange={setColumnChoices}
               loading={isLoading}
               getRowId={(r) => (r as { id: string }).id}
               autoHeight
@@ -524,10 +555,10 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
                 if (href) navigate(href);
               }}
               pageSizeOptions={[10, 25, 50, 100]}
+              localeText={gridLocaleText}
               sx={{
                 border: 'none',
                 minHeight: 360,
-                minWidth: 960,
                 '& .MuiDataGrid-row': rowHref ? { cursor: 'pointer' } : undefined,
               }}
             />
@@ -734,7 +765,13 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
                     InputLabelProps={
                       f.type === 'date' || f.type === 'datetime' ? { shrink: true } : undefined
                     }
-                    inputProps={f.type === 'number' ? { step: 'any' } : undefined}
+                    inputProps={
+                      f.type === 'number'
+                        ? { step: 'any' }
+                        : (f.maxLength ?? (f.name === 'title' ? TITLE_MAX : undefined))
+                          ? { maxLength: f.maxLength ?? TITLE_MAX }
+                          : undefined
+                    }
                     {...register(f.name, { required: f.required })}
                     value={formValues[f.name] ?? ''}
                   />
@@ -863,7 +900,7 @@ export function statusChip(value: unknown, palette?: Record<string, string>) {
   return <Chip size="small" label={v.replaceAll('_', ' ')} color={(color as undefined) ?? 'default'} />;
 }
 
-function ResponsiveRecordCards<TRow extends GridValidRowModel>({
+export function ResponsiveRecordCards<TRow extends GridValidRowModel>({
   rows,
   columns,
   loading,
@@ -903,9 +940,11 @@ function ResponsiveRecordCards<TRow extends GridValidRowModel>({
         const href = rowHref?.(row);
         const reference = String(record.referenceCode ?? record.code ?? '').trim();
         const fallbackTitle = reference || String(record.id ?? 'Record');
-        const title = String(record.title ?? record.name ?? fallbackTitle).trim();
+        // Records without a title (inspections) use what was inspected instead of repeating the reference.
+        const title = String(record.title ?? record.name ?? record.assetOrLocation ?? fallbackTitle).trim();
+        const titleField = record.title != null ? 'title' : record.name != null ? 'name' : 'assetOrLocation';
         const detailColumns = columns
-          .filter((c) => !['referenceCode', 'title', 'name', ...BADGE_FIELDS].includes(c.field))
+          .filter((c) => !['referenceCode', 'title', 'name', titleField, ...BADGE_FIELDS].includes(c.field))
           .slice(0, 6);
 
         return (
@@ -934,7 +973,7 @@ function ResponsiveRecordCards<TRow extends GridValidRowModel>({
                         {reference}
                       </Typography>
                     )}
-                    <Typography variant="subtitle1" fontWeight={700} sx={{ wordBreak: 'break-word' }}>
+                    <Typography variant="subtitle1" fontWeight={700} title={title} sx={clampLines(3)}>
                       {title}
                     </Typography>
                   </Box>
@@ -1026,20 +1065,25 @@ function formatCardValue(record: Record<string, unknown>, col: GridColDef): stri
   }
 
   if (col.type === 'boolean') return raw ? 'Yes' : 'No';
+  if (typeof raw === 'number') return formatCount(raw);
   if (col.field.toLowerCase().includes('date') || col.field.toLowerCase().endsWith('at')) {
-    const date = new Date(String(raw));
-    if (!Number.isNaN(date.getTime())) return date.toLocaleString();
+    const text = String(raw);
+    const formatted = /^\d{4}-\d{2}-\d{2}$/.test(text) ? formatDate(text) : formatDateTime(text);
+    if (formatted) return formatted;
   }
 
   return String(raw).replaceAll('_', ' ');
 }
 
-export function dateCol(field: string, headerName: string, width = 180): GridColDef {
+export function dateCol(field: string, headerName: string, width = 160): GridColDef {
   return {
     field,
     headerName,
     width,
-    valueFormatter: (v) => (v ? new Date(v as string).toLocaleString() : ''),
+    valueFormatter: (v) => {
+      const text = v == null ? '' : String(v);
+      return /^\d{4}-\d{2}-\d{2}$/.test(text) ? formatDate(text) : formatDateTime(text);
+    },
   };
 }
 
@@ -1048,11 +1092,19 @@ export function regionCol(width = 220): GridColDef {
     field: 'region',
     headerName: 'Region / District',
     width,
-    valueGetter: (_v, row) =>
-      `${(row as { region?: { name?: string } }).region?.name ?? ''}${
-        (row as { district?: { name?: string } }).district?.name
-          ? ` / ${(row as { district: { name: string } }).district.name}`
-          : ''
-      }`,
+    valueGetter: (_v, row) => regionLabel(row as RegionRow),
   };
+}
+
+interface RegionRow {
+  region?: { name?: string } | null;
+  district?: { name?: string } | null;
+}
+
+/** "Region / District", or "—" when the record has no place yet. */
+export function regionLabel(row: RegionRow): string {
+  const region = row.region?.name ?? '';
+  const district = row.district?.name ?? '';
+  const label = [region, district].filter(Boolean).join(' / ');
+  return label || '—';
 }

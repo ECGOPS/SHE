@@ -1,14 +1,26 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Box, Button, Card, CardContent, Chip, Stack, Typography, useMediaQuery, useTheme } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { Box, Button, Card, CardContent, Chip, Stack, Typography, useMediaQuery } from '@mui/material';
+import { DataGrid, GridColDef, GridColumnVisibilityModel } from '@mui/x-data-grid';
 import AddCircleRoundedIcon from '@mui/icons-material/AddCircleRounded';
 import { endpoints, IncidentDto } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
 import { ISSUE_SCOPE_LABEL, IssueScope } from '@ecg-she/shared';
 import { MobilePageBar, RecordSearch, useServerPage } from '../../components/server-page';
 import { pressableCardSx } from '../../theme/theme';
+import { regionLabel } from '../../components/ModulePage';
+import {
+  TABLE_MIN_WIDTH_QUERY,
+  clampLines,
+  fitColumns,
+  formatDate,
+  formatDateTime,
+  gridLocaleText,
+} from '../../components/grid-helpers';
+
+/** On narrower desktops these give way so Status and Occurred stay in view. */
+const SECONDARY_COLUMNS: GridColumnVisibilityModel = { type: false, resolvedAt: false };
 
 const SEV_COLOR: Record<string, 'default' | 'warning' | 'error' | 'success'> = {
   NEGLIGIBLE: 'success',
@@ -29,8 +41,14 @@ const STATUS_COLOR: Record<string, 'default' | 'info' | 'warning' | 'success' | 
 
 export function IncidentsListPage() {
   const nav = useNavigate();
-  const theme = useTheme();
-  const compact = useMediaQuery(theme.breakpoints.down('lg'));
+  const compact = !useMediaQuery(TABLE_MIN_WIDTH_QUERY);
+  const roomy = useMediaQuery('(min-width: 1700px)');
+  // The user's own show/hide choices from the column menu win over the default.
+  const [columnChoices, setColumnChoices] = useState<GridColumnVisibilityModel>({});
+  const columnVisibility = useMemo(
+    () => ({ ...(roomy ? {} : SECONDARY_COLUMNS), ...columnChoices }),
+    [roomy, columnChoices],
+  );
   const userId = useAuthStore((s) => s.session?.user.id);
   const [mineOnly, setMineOnly] = useState(false);
   const paging = useServerPage();
@@ -51,22 +69,23 @@ export function IncidentsListPage() {
       field: 'region',
       headerName: 'Region / District',
       width: 220,
-      valueGetter: (_v, row) =>
-        `${row.region?.name ?? ''}${row.district?.name ? ` / ${row.district.name}` : ''}`,
+      valueGetter: (_v, row) => regionLabel(row),
     },
     { field: 'referenceCode', headerName: 'Reference', width: 220 },
     { field: 'title', headerName: 'Title', flex: 1, minWidth: 240 },
-    { field: 'type', headerName: 'Type', width: 160, valueFormatter: (v) => String(v).replace('_', ' ') },
+    { field: 'type', headerName: 'Type', width: 160, valueFormatter: (v) => String(v).replaceAll('_', ' ') },
     {
       field: 'severity',
       headerName: 'Severity',
-      width: 130,
+      // Wide enough for CATASTROPHIC.
+      width: 150,
       renderCell: (p) => <Chip size="small" label={p.value} color={SEV_COLOR[p.value as string] ?? 'default'} />,
     },
     {
       field: 'status',
       headerName: 'Status',
-      width: 180,
+      // Wide enough for UNDER INVESTIGATION.
+      width: 210,
       renderCell: (p) => <Chip size="small" label={String(p.value).replaceAll('_', ' ')} color={STATUS_COLOR[p.value as string] ?? 'default'} />,
     },
     {
@@ -89,10 +108,11 @@ export function IncidentsListPage() {
     {
       field: 'occurredAt',
       headerName: 'Occurred',
-      width: 180,
-      valueFormatter: (v) => (v ? new Date(v as string).toLocaleString() : ''),
+      width: 160,
+      valueFormatter: (v) => formatDateTime(v),
     },
   ];
+  const tableColumns = fitColumns(cols);
 
   return (
     <Stack spacing={2}>
@@ -110,11 +130,12 @@ export function IncidentsListPage() {
             Capture, investigate and close every safety, electrical, environmental and vehicle incident.
           </Typography>
         </Box>
-        <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}>
+        {/* Wraps instead of spilling text out of the buttons when text is enlarged. */}
+        <Stack direction="row" gap={1} flexWrap="wrap" useFlexGap sx={{ alignSelf: { xs: 'stretch', sm: 'center' } }}>
           <Button
             variant={mineOnly ? 'contained' : 'outlined'}
             onClick={() => setMineOnly((on) => !on)}
-            sx={{ whiteSpace: 'nowrap' }}
+            sx={{ flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
           >
             Assigned to me
           </Button>
@@ -122,7 +143,7 @@ export function IncidentsListPage() {
             variant="contained"
             startIcon={<AddCircleRoundedIcon />}
             onClick={() => nav('/incidents/new')}
-            sx={{ whiteSpace: 'nowrap' }}
+            sx={{ flex: { xs: '1 1 auto', sm: '0 0 auto' } }}
           >
             Report incident
           </Button>
@@ -140,7 +161,10 @@ export function IncidentsListPage() {
           <Box sx={{ width: '100%', overflowX: 'auto' }}>
             <DataGrid
               rows={rows}
-              columns={cols}
+              columns={tableColumns}
+              columnVisibilityModel={columnVisibility}
+              onColumnVisibilityModelChange={setColumnChoices}
+              localeText={gridLocaleText}
               loading={isLoading}
               getRowId={(r) => (r as { id: string }).id}
               autoHeight
@@ -153,7 +177,6 @@ export function IncidentsListPage() {
               pageSizeOptions={[10, 25, 50, 100]}
               sx={{
                 border: 'none',
-                minWidth: 1120,
                 '& .MuiDataGrid-row': { cursor: 'pointer' },
               }}
             />
@@ -217,11 +240,11 @@ function MobileIncidentList({
                   {row.referenceCode}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {row.occurredAt ? new Date(row.occurredAt).toLocaleDateString() : ''}
+                  {formatDate(row.occurredAt)}
                 </Typography>
               </Stack>
 
-              <Typography variant="subtitle1" fontWeight={700}>
+              <Typography variant="subtitle1" fontWeight={700} title={row.title} sx={clampLines(3)}>
                 {row.title}
               </Typography>
 

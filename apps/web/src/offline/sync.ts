@@ -56,7 +56,9 @@ export async function flushOfflineQueue(): Promise<{ flushed: number; remaining:
     if (result === 'auth') break;
   }
   const remaining = await offlineQueue.size();
-  notifyOfflineQueueChanged();
+  // Only when something was sent: listeners refresh the lists so queued
+  // reports show up without a reload.
+  if (flushed > 0) notifyOfflineQueueChanged();
   return { flushed, remaining };
 }
 

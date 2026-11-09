@@ -54,7 +54,9 @@ export function PrivacyNoticePage() {
         display: 'flex',
         flexDirection: 'column',
         background: 'linear-gradient(135deg, #0B1A2B 0%, #0B5394 60%, #1F77BD 100%)',
-        py: { xs: 2, sm: 4 },
+        // Clear the status bar and home indicator in the installed iPhone app.
+        pt: { xs: 'max(16px, env(safe-area-inset-top))', sm: 'max(32px, env(safe-area-inset-top))' },
+        pb: { xs: 'max(16px, env(safe-area-inset-bottom))', sm: 'max(32px, env(safe-area-inset-bottom))' },
         pl: { xs: 'max(12px, env(safe-area-inset-left))', sm: 'max(16px, env(safe-area-inset-left))' },
         pr: { xs: 'max(12px, env(safe-area-inset-right))', sm: 'max(16px, env(safe-area-inset-right))' },
       }}
@@ -68,7 +70,7 @@ export function PrivacyNoticePage() {
               Read this notice before you sign in to ECG SHE.
             </Typography>
           </Stack>
-          <Box sx={{ maxHeight: { xs: '46vh', sm: '52vh' }, overflowY: 'auto', pr: 0.5 }}>
+          <Box sx={{ maxHeight: { xs: '46vh', sm: '52vh' }, overflowY: 'auto', overscrollBehavior: 'contain', pr: 0.5 }}>
             {notice && <PrivacyNoticeBody effectiveDate={notice.effectiveDate} sections={notice.sections} />}
             {error && <Typography color="error">{error}</Typography>}
           </Box>

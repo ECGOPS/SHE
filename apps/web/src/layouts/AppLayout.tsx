@@ -56,7 +56,14 @@ export function AppLayout() {
           pt: 'env(safe-area-inset-top)',
         }}
       >
-        <Toolbar sx={{ gap: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
+        <Toolbar
+          sx={{
+            gap: { xs: 0.5, sm: 1 },
+            // In landscape the notch sits at the side; keep the buttons clear of it.
+            pl: { xs: 'max(8px, env(safe-area-inset-left))', sm: 'max(16px, env(safe-area-inset-left))' },
+            pr: { xs: 'max(8px, env(safe-area-inset-right))', sm: 'max(16px, env(safe-area-inset-right))' },
+          }}
+        >
           <IconButton
             color="inherit"
             edge="start"

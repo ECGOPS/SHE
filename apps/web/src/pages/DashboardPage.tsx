@@ -23,6 +23,7 @@ export function DashboardPage() {
   const pieSize = narrow ? 200 : 260;
   const { data: kpis } = useQuery({ queryKey: ['kpis'], queryFn: endpoints.kpis });
   const { data: trends } = useQuery({ queryKey: ['trends', 30], queryFn: () => endpoints.trends(30) });
+  const trendMax = Math.max(0, ...(trends ?? []).flatMap((t) => [t.incidents, t.nearMisses, t.hazards]));
   const { data: heat } = useQuery({ queryKey: ['heatmap'], queryFn: endpoints.heatmap });
   const { data: capaStats } = useQuery({ queryKey: ['capa-stats'], queryFn: endpoints.capaStats });
 
@@ -130,8 +131,18 @@ export function DashboardPage() {
                     scaleType: 'point',
                     tickLabelInterval: (_value, index) => index % 5 === 0,
                   }]}
+                  // Counts are whole numbers. Without a floor on the range, an
+                  // all-zero month collapsed the axis and printed a clipped
+                  // "0.0000"-style label.
+                  yAxis={[{
+                    min: 0,
+                    max: trendMax < 4 ? 4 : undefined,
+                    tickMinStep: 1,
+                    valueFormatter: (v: number) => String(Math.round(v)),
+                  }]}
                   grid={{ horizontal: true }}
-                  margin={{ top: 10, right: 16, bottom: 36, left: 36 }}
+                  // Top margin leaves room for the legend so it doesn't sit on the lines.
+                  margin={{ top: 44, right: 16, bottom: 36, left: 40 }}
                 />
               </Box>
             </CardContent>

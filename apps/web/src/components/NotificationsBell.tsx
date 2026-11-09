@@ -118,7 +118,7 @@ export function NotificationsBell() {
           </Button>
         </Stack>
 
-        <Box sx={{ flex: 1, overflowY: 'auto' }}>
+        <Box sx={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain' }}>
           {loading && !items.length && (
             <Stack alignItems="center" sx={{ py: 4 }}>
               <CircularProgress size={20} />

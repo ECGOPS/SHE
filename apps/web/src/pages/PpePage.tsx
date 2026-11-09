@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { Alert, Button, Card, CardContent, Chip, Stack, Typography } from '@mui/material';
+import { Alert, Button, Card, CardContent, Chip, Stack, Typography, useMediaQuery } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { Permission } from '@ecg-she/shared';
 import { endpoints } from '../api/endpoints';
 import { useAuthStore } from '../stores/auth.store';
-import { regionCol } from '../components/ModulePage';
+import { ResponsiveRecordCards, regionCol } from '../components/ModulePage';
+import { TABLE_MIN_WIDTH_QUERY, fitColumns, gridLocaleText } from '../components/grid-helpers';
 import { MobilePageBar, RecordSearch, useServerPage } from '../components/server-page';
 
 function words(value: unknown): string {
@@ -22,8 +23,12 @@ const cols: GridColDef[] = [
   { field: 'retestIntervalMonths', headerName: 'Retest (months)', width: 140, type: 'number' },
 ];
 
+/** Columns that shrink to fit the table's width instead of scrolling sideways. */
+const tableColumns = fitColumns(cols);
+
 export function PpePage() {
   const navigate = useNavigate();
+  const compact = !useMediaQuery(TABLE_MIN_WIDTH_QUERY);
   const canManage = (useAuthStore((s) => s.session?.user.permissions) ?? []).includes(Permission.PPE_MANAGE);
   const itemsPage = useServerPage();
   const duePage = useServerPage(10);
@@ -103,22 +108,36 @@ export function PpePage() {
       </Card>
 
       <RecordSearch value={itemsPage.searchInput} onChange={itemsPage.setSearchInput} placeholder="Search part code or name" />
-      <Card sx={{ p: 0, overflow: 'hidden' }}>
-        <DataGrid
-          rows={rows}
-          columns={cols}
-          loading={items.isLoading}
-          autoHeight
-          disableRowSelectionOnClick
-          paginationMode="server"
-          rowCount={items.data?.total ?? 0}
-          paginationModel={{ page: itemsPage.page, pageSize: itemsPage.pageSize }}
-          onPaginationModelChange={itemsPage.onPaginationModelChange}
-          pageSizeOptions={[10, 25, 50, 100]}
-          onRowClick={(params) => navigate(`/ppe/${params.id}`)}
-          sx={{ '& .MuiDataGrid-row': { cursor: 'pointer' } }}
-        />
-      </Card>
+      {compact ? (
+        <Stack spacing={1}>
+          <ResponsiveRecordCards
+            rows={rows}
+            columns={cols}
+            loading={items.isLoading}
+            rowHref={(row) => `/ppe/${row.id}`}
+            onOpen={navigate}
+          />
+          <MobilePageBar page={itemsPage.page} pageSize={itemsPage.pageSize} total={items.data?.total ?? 0} onPage={itemsPage.setPage} />
+        </Stack>
+      ) : (
+        <Card sx={{ p: 0, overflow: 'hidden' }}>
+          <DataGrid
+            rows={rows}
+            columns={tableColumns}
+            localeText={gridLocaleText}
+            loading={items.isLoading}
+            autoHeight
+            disableRowSelectionOnClick
+            paginationMode="server"
+            rowCount={items.data?.total ?? 0}
+            paginationModel={{ page: itemsPage.page, pageSize: itemsPage.pageSize }}
+            onPaginationModelChange={itemsPage.onPaginationModelChange}
+            pageSizeOptions={[10, 25, 50, 100]}
+            onRowClick={(params) => navigate(`/ppe/${params.id}`)}
+            sx={{ '& .MuiDataGrid-row': { cursor: 'pointer' } }}
+          />
+        </Card>
+      )}
     </Stack>
   );
 }

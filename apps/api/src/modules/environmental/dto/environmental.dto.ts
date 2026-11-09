@@ -37,7 +37,7 @@ export class EnvironmentalPhotoDto {
 
 export class CreateEnvironmentalEventDto {
   @ApiProperty({ enum: EnvironmentalEventType }) @IsEnum(EnvironmentalEventType) type!: EnvironmentalEventType;
-  @ApiProperty() @IsString() @MaxLength(4000) title!: string;
+  @ApiProperty() @IsString() @MaxLength(256) title!: string;
   @ApiProperty() @IsString() @MaxLength(4000) description!: string;
   @ApiProperty() @IsDateString() occurredAt!: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() regionId?: string;

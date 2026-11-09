@@ -28,6 +28,7 @@ export function InspectionsPage() {
       list={endpoints.inspections}
       columns={cols}
       createPath="/inspections/new"
+      ctaLabel="New inspection"
       rowHref={(row) => `/inspections/${row.id}`}
       permission={Permission.INSPECTION_CONDUCT}
       formFields={[]}
