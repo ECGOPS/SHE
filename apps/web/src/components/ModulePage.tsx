@@ -940,9 +940,11 @@ export function ResponsiveRecordCards<TRow extends GridValidRowModel>({
         const href = rowHref?.(row);
         const reference = String(record.referenceCode ?? record.code ?? '').trim();
         const fallbackTitle = reference || String(record.id ?? 'Record');
-        const title = String(record.title ?? record.name ?? fallbackTitle).trim();
+        // Records without a title (inspections) use what was inspected instead of repeating the reference.
+        const title = String(record.title ?? record.name ?? record.assetOrLocation ?? fallbackTitle).trim();
+        const titleField = record.title != null ? 'title' : record.name != null ? 'name' : 'assetOrLocation';
         const detailColumns = columns
-          .filter((c) => !['referenceCode', 'title', 'name', ...BADGE_FIELDS].includes(c.field))
+          .filter((c) => !['referenceCode', 'title', 'name', titleField, ...BADGE_FIELDS].includes(c.field))
           .slice(0, 6);
 
         return (

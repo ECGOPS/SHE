@@ -30,6 +30,8 @@ export class CreateInspectionDto {
   @ApiProperty() @IsString() @MaxLength(4000) assetOrLocation!: string;
   @ApiProperty() @IsDateString() inspectedAt!: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() regionId?: string;
+  /** Set when the inspection was saved on a phone without signal and synced later. */
+  @ApiPropertyOptional() @IsOptional() @IsUUID() offlineClientId?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() districtId?: string;
   @ApiPropertyOptional({ enum: WEATHER_CONDITION }) @IsOptional() @IsIn(WEATHER_CONDITION) weatherCondition?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) temperatureC?: number;

@@ -40,6 +40,11 @@ export class InspectionsService {
       districtId: dto.districtId ?? user.districtId ?? null,
     });
     if (!scoped.regionId) throw new BadRequestException('regionId required');
+    // A phone that lost the reply may send the same offline inspection again.
+    if (dto.offlineClientId) {
+      const existing = await this.repo.findOne({ where: { offlineClientId: dto.offlineClientId } });
+      if (existing) return this.get(user, existing.id);
+    }
     if (OUTDOOR.includes(dto.type) && !dto.weatherCondition) {
       throw new BadRequestException('Record the weather for an outdoor electrical inspection');
     }
@@ -58,6 +63,7 @@ export class InspectionsService {
         arcFlashBoundaryM: OUTDOOR.includes(dto.type) ? dto.arcFlashBoundaryM ?? null : null,
         nfpaPpeCategory: OUTDOOR.includes(dto.type) ? dto.nfpaPpeCategory ?? null : null,
         observations: dto.observations?.trim() || null,
+        offlineClientId: dto.offlineClientId ?? null,
         items,
         scorePercent: this.score(items),
         inspectorId: user.id,

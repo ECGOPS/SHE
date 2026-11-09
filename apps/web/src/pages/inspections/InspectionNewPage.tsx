@@ -31,7 +31,9 @@ import {
 import { endpoints } from '../../api/endpoints';
 import { isRasterImageType, safeImageSrc } from '../../security/output';
 import { useAuthStore } from '../../stores/auth.store';
+import { offlineQueue } from '../../offline/queue';
 import { useFormDraft } from '../../offline/useFormDraft';
+import { useOnline } from '../../offline/useOnline';
 import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { INSPECTION_CHECKLISTS, OUTDOOR_INSPECTIONS, PRE_USE_INSPECTIONS } from './checklists';
 
@@ -66,6 +68,8 @@ function rowsFor(type: InspectionType): Row[] {
 
 export function InspectionNewPage() {
   const navigate = useNavigate();
+  // Re-renders when the signal drops or returns, so the offline notice stays accurate.
+  const online = useOnline();
   const session = useAuthStore((s) => s.session);
   const role = session?.user.role;
   const staff = role === Role.STAFF || role === Role.DISTRICT_USER || role === Role.REGIONAL_USER;
@@ -125,8 +129,8 @@ export function InspectionNewPage() {
   );
 
   const save = useMutation({
-    mutationFn: () =>
-      endpoints.createInspection({
+    mutationFn: async () => {
+      const payload = {
         type,
         assetOrLocation: asset.trim(),
         inspectedAt: new Date(inspectedAt).toISOString(),
@@ -144,10 +148,34 @@ export function InspectionNewPage() {
           immediateAction: row.answer === 'FAIL' ? row.immediateAction.trim() || undefined : undefined,
         })),
         photos: photos.length ? photos : undefined,
-      }),
-    onSuccess: async (record) => {
+        // Lets the server ignore a second copy if a sync is repeated.
+        offlineClientId: crypto.randomUUID(),
+      };
+      // No signal on site: keep it on the phone; it sends when the phone is back online.
+      if (!navigator.onLine) {
+        await offlineQueue.enqueue({ kind: 'inspection', payload });
+        return { offline: true as const };
+      }
+      try {
+        return await endpoints.createInspection(payload);
+      } catch (err) {
+        // No HTTP status means the request never reached the server (signal
+        // dropped mid-send). A rejection from the server is shown instead.
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (!status) {
+          await offlineQueue.enqueue({ kind: 'inspection', payload });
+          return { offline: true as const };
+        }
+        throw err;
+      }
+    },
+    onSuccess: async (result) => {
       await clear();
-      navigate(`/inspections/${record.id}`);
+      if ('offline' in result) {
+        navigate('/inspections');
+        return;
+      }
+      navigate(`/inspections/${result.id}`);
     },
     onError: (err) => setError(errorMessage(err)),
   });
@@ -290,6 +318,9 @@ export function InspectionNewPage() {
           void discard();
         }}
       />
+      {!online && (
+        <Alert severity="info">You are offline. This inspection will be saved on this phone and sent when it is back online.</Alert>
+      )}
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
       <Card>
         <CardContent>

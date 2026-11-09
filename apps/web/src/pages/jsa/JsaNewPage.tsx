@@ -22,6 +22,7 @@ import { endpoints } from '../../api/endpoints';
 import { useAuthStore } from '../../stores/auth.store';
 import { offlineQueue } from '../../offline/queue';
 import { useFormDraft } from '../../offline/useFormDraft';
+import { useOnline } from '../../offline/useOnline';
 import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { CrewPersonField, ListedMultiField, ListedTextField, SupervisorField } from './ChoiceFields';
 import { PermitField } from './PermitField';
@@ -53,6 +54,8 @@ function errorMessage(err: unknown): string {
 
 export function JsaNewPage() {
   const navigate = useNavigate();
+  // Re-renders when the signal drops or returns, so the offline notice stays accurate.
+  const online = useOnline();
   const session = useAuthStore((s) => s.session);
   const role = session?.user.role;
   const lockedToRegion = !!role && isSafetyOfficer(role) && (isRegionalScope(role) || isDistrictScope(role));
@@ -194,7 +197,7 @@ export function JsaNewPage() {
         }}
       />
       {error && <Alert severity="error" onClose={() => setError(null)}>{error}</Alert>}
-      {!navigator.onLine && <Alert severity="info">You are offline. This briefing will be sent when the device is back online.</Alert>}
+      {!online && <Alert severity="info">You are offline. This briefing will be sent when the device is back online.</Alert>}
 
       <Card>
         <CardContent>

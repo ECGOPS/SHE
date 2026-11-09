@@ -29,6 +29,7 @@ import { endpoints } from '../../api/endpoints';
 import { isRasterImageType, safeImageSrc } from '../../security/output';
 import { offlineQueue } from '../../offline/queue';
 import { useFormDraft } from '../../offline/useFormDraft';
+import { useOnline } from '../../offline/useOnline';
 import { FormDraftBanner } from '../../components/FormDraftBanner';
 import { useAuthStore } from '../../stores/auth.store';
 
@@ -67,6 +68,8 @@ interface IncidentPhotoPayload {
 
 export function IncidentNewPage() {
   const nav = useNavigate();
+  // Re-renders when the signal drops or returns, so the offline notice stays accurate.
+  const online = useOnline();
   const theme = useTheme();
   const fullScreenDialog = useMediaQuery(theme.breakpoints.down('sm'));
   const location = useLocation();
@@ -397,7 +400,7 @@ export function IncidentNewPage() {
           void discard();
         }}
       />
-      {!navigator.onLine && (
+      {!online && (
         <Alert severity="info">You are offline — this report will be queued and synced automatically.</Alert>
       )}
       {mutation.isError && (
