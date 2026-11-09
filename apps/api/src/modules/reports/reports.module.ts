@@ -7,6 +7,7 @@ import { Incident } from '../incidents/entities/incident.entity';
 import { NearMiss } from '../near-miss/entities/near-miss.entity';
 import { Hazard } from '../hazards/entities/hazard.entity';
 import { JsaRecord } from '../jsa/entities/jsa.entity';
+import { RiskAssessment } from '../risk-assessments/entities/risk-assessment.entity';
 import { Permit } from '../ptw/entities/permit.entity';
 import { Inspection } from '../inspections/entities/inspection.entity';
 import { AuditRecord } from '../audits/entities/audit-record.entity';
@@ -23,6 +24,7 @@ import { PpeIssuance, PpeItem } from '../ppe/entities/ppe.entity';
       NearMiss,
       Hazard,
       JsaRecord,
+      RiskAssessment,
       Permit,
       Inspection,
       AuditRecord,

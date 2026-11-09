@@ -15,6 +15,7 @@ import ReportProblemRoundedIcon from '@mui/icons-material/ReportProblemRounded';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded';
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
 import ChecklistRoundedIcon from '@mui/icons-material/ChecklistRounded';
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
@@ -45,6 +46,7 @@ const NAV: NavItem[] = [
   { to: '/near-miss', label: 'Near Miss', icon: <VisibilityRoundedIcon /> },
   { to: '/hazards', label: 'Hazards', icon: <WarningAmberRoundedIcon /> },
   { to: '/jsa', label: 'Job Safety Analysis', icon: <AssignmentTurnedInRoundedIcon /> },
+  { to: '/risk-assessments', label: 'Risk Assessment', icon: <AssessmentRoundedIcon /> },
   { to: '/ptw', label: 'Permit-to-Work', icon: <VerifiedUserRoundedIcon /> },
   { to: '/inspections', label: 'Inspections', icon: <ChecklistRoundedIcon /> },
   { to: '/audits', label: 'Audits', icon: <FactCheckRoundedIcon /> },

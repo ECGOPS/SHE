@@ -17,6 +17,10 @@ export class Hazard extends ScopedEntity {
   @Column({ type: 'text' })
   description!: string;
 
+  /** When the condition was noticed or began — same field as incidents / near-miss. */
+  @Column({ type: 'datetime', nullable: true })
+  occurredAt?: Date | null;
+
   @Column({ type: 'varchar', length: 32 })
   category!: HazardCategory;
 

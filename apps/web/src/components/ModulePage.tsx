@@ -99,7 +99,7 @@ export interface ModulePageConfig<TRow extends GridValidRowModel = GridValidRowM
   /** Open this path instead of the create dialog. */
   createPath?: string;
   /** When set, a failed connection stores the report on this device and sends it later. */
-  offlineKind?: 'near-miss' | 'hazard' | 'jsa' | 'inspection' | 'capa-progress';
+  offlineKind?: 'near-miss' | 'hazard' | 'jsa' | 'risk-assessment' | 'inspection' | 'capa-progress';
   /** Attach up to 4 photos on the create form. */
   allowPhotos?: boolean;
   /** Show a button that fills latitude and longitude from this device. */
@@ -151,7 +151,7 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
     const hidden = roomy ? {} : Object.fromEntries((secondaryColumns ?? []).map((f) => [f, false]));
     return { ...hidden, ...columnChoices };
   }, [roomy, secondaryColumns, columnChoices]);
-  const fullScreenForm = useMediaQuery(theme.breakpoints.down('sm'));
+  const fullScreenForm = useMediaQuery(theme.breakpoints.down('md'));
   const [dialogOpen, setDialogOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: 'success' | 'error'; msg: string } | null>(null);
   const [photos, setPhotos] = useState<Array<{ fileName: string; mimeType: string; dataUrl: string }>>([]);
@@ -566,10 +566,20 @@ export function ModulePage<TRow extends GridValidRowModel = GridValidRowModel>({
         </Card>
       )}
 
-      <Dialog open={dialogOpen} onClose={closeForm} maxWidth="sm" fullWidth fullScreen={fullScreenForm}>
+      <Dialog
+        open={dialogOpen}
+        onClose={closeForm}
+        maxWidth="md"
+        fullWidth
+        fullScreen={fullScreenForm}
+        PaperProps={{ sx: { maxHeight: '100dvh', display: 'flex', flexDirection: 'column' } }}
+      >
         <DialogTitle>{ctaLabel}</DialogTitle>
-        <Box component="form" onSubmit={submit}>
-          <DialogContent dividers>
+        <Box component="form" onSubmit={submit} sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
+          <DialogContent
+            dividers
+            sx={{ maxHeight: { sm: 'calc(100dvh - 160px)' }, overflowY: 'auto', flex: '1 1 auto' }}
+          >
             <Stack spacing={2}>
               <FormDraftBanner
                 hasDraft={hasDraft}

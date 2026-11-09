@@ -94,14 +94,14 @@ export const MANAGEMENT_TOPICS = [
 
 /** Requirements already evidenced by another register in this application. */
 export const MANAGEMENT_COVERED = [
-  { clause: 'ISO 45001 6.1.2', title: 'Hazard identification and risk', where: 'Hazards and job safety analysis' },
-  { clause: 'ISO 45001 8.1.2', title: 'Hierarchy of controls', where: 'Hazards and job safety analysis' },
+  { clause: 'ISO 45001 6.1.2', title: 'Hazard identification and risk', where: 'Hazards, risk assessments, and job safety analysis' },
+  { clause: 'ISO 45001 8.1.2', title: 'Hierarchy of controls', where: 'Hazards, risk assessments, and job safety analysis' },
   { clause: 'ISO 45001 8.1 and ISO 14001 8.1', title: 'Operational control', where: 'Permits to work, inspections, and PPE' },
   { clause: 'ISO 45001 7.2 and ISO 14001 7.2', title: 'Competence', where: 'Training' },
-  { clause: 'ISO 45001 10.2 and ISO 14001 10.2', title: 'Incidents and corrective action', where: 'Incidents, near misses, audits, and corrective actions' },
+  { clause: 'ISO 45001 10.2 and ISO 14001 10.2', title: 'Incidents and corrective action', where: 'Incidents, near misses, risk assessments, audits, and corrective actions' },
   { clause: 'ISO 45001 9.1 and ISO 14001 9.1', title: 'Monitoring and measurement', where: 'Inspections, the dashboard, and reports' },
   { clause: 'ISO 45001 9.2 and ISO 14001 9.2', title: 'Internal audit', where: 'Audits, including the clause checklist' },
   { clause: 'ISO 45001 8.1 and occupational health', title: 'Health surveillance', where: 'Occupational health' },
   { clause: 'ISO 14001 8.2 response', title: 'Environmental events', where: 'Environmental events, including aspect, impact, and regulator notification' },
-  { clause: 'ISO 45001 7.5 and ISO 14001 7.5', title: 'Operational records', where: 'Incident, permit, inspection, and audit files, plus the audit trail' },
+  { clause: 'ISO 45001 7.5 and ISO 14001 7.5', title: 'Operational records', where: 'Incident, risk assessment, permit, inspection, and audit files, plus the audit trail' },
 ] as const;

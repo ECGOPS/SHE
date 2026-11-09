@@ -90,6 +90,11 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
     queryFn: () => endpoints.hazards({ pageSize: 50 }),
     enabled: canCreateCapa,
   });
+  const riskAssessments = useQuery({
+    queryKey: ['risk-assessment-protocol-links'],
+    queryFn: () => endpoints.riskAssessments({ pageSize: 50 }),
+    enabled: canCreateCapa,
+  });
 
   const run = (fn: () => Promise<unknown>) =>
     fn()
@@ -418,6 +423,7 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
                     <MenuItem value="DOCUMENT">Controlled document</MenuItem>
                     <MenuItem value="JSA">Job safety analysis</MenuItem>
                     <MenuItem value="HAZARD">Hazard</MenuItem>
+                    <MenuItem value="RISK_ASSESSMENT">Risk assessment</MenuItem>
                     <MenuItem value="CHANGE">Management of change</MenuItem>
                   </TextField>
                   {protocolLinkKind === 'DOCUMENT' && (
@@ -445,6 +451,15 @@ export function IncidentInvestigation({ incident }: { incident: IncidentDto }) {
                     <TextField select size="small" label="Hazard" required value={protocolLinkId} onChange={(e) => setProtocolLinkId(e.target.value)}>
                       {(hazards.data?.items ?? []).map((row) => (
                         <MenuItem key={String(row.id)} value={String(row.id)}>{String(row.referenceCode ?? '')} · {String(row.title)}</MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                  {protocolLinkKind === 'RISK_ASSESSMENT' && (
+                    <TextField select size="small" label="Risk assessment" required value={protocolLinkId} onChange={(e) => setProtocolLinkId(e.target.value)}>
+                      {(riskAssessments.data?.items ?? []).map((row) => (
+                        <MenuItem key={String(row.id)} value={String(row.id)}>
+                          {String(row.referenceCode ?? '')} · {String(row.activityBeingDone ?? row.title ?? '')}
+                        </MenuItem>
                       ))}
                     </TextField>
                   )}

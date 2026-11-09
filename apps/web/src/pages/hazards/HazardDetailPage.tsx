@@ -42,6 +42,7 @@ import {
   CaseFileHeader,
   CaseFileMetric,
   CaseFileSkeleton,
+  formatDay,
   placeName,
   titleCase,
 } from '../../components/case-file';
@@ -96,6 +97,11 @@ export function HazardDetailPage() {
         actions={<ExportReportButton filename={`${data.referenceCode}-report.pdf`} download={() => endpoints.hazardReport(id!)} />}
         meta={[
           { icon: <PlaceOutlinedIcon fontSize="small" />, label: 'Location', value: data.locationName || placeName(data.region, data.district) },
+          {
+            icon: <EventOutlinedIcon fontSize="small" />,
+            label: 'Occurred',
+            value: formatDay(data.occurredAt ?? data.createdAt),
+          },
           { icon: <PersonOutlineRoundedIcon fontSize="small" />, label: 'Reported by', value: data.reportedBy?.fullName ?? '—' },
           { icon: <ShieldOutlinedIcon fontSize="small" />, label: 'Risk score', value: data.riskScore != null ? `${data.riskScore}${data.residualRiskScore != null ? ` · residual ${data.residualRiskScore}` : ''}` : 'Not scored' },
           { icon: <EventOutlinedIcon fontSize="small" />, label: 'Target completion', value: data.targetCompletionDate ? String(data.targetCompletionDate).slice(0, 10) : 'Not set' },

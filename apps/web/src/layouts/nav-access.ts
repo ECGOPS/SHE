@@ -54,6 +54,7 @@ export const NAV_ROLES: Record<string, Role[]> = {
   '/near-miss': CASES,
   '/hazards': CASES,
   '/jsa': CASES,
+  '/risk-assessments': CASES,
   '/ptw': CASES,
   '/environmental': CASES,
   '/inspections': [...REPORTER, ...INSPECTIONS],

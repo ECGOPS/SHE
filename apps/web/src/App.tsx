@@ -14,11 +14,16 @@ import { IncidentNewPage } from './pages/incidents/IncidentNewPage';
 import { IncidentDetailPage } from './pages/incidents/IncidentDetailPage';
 import { HazardsPage } from './pages/HazardsPage';
 import { HazardDetailPage } from './pages/hazards/HazardDetailPage';
+import { HazardNewPage } from './pages/hazards/HazardNewPage';
 import { NearMissPage } from './pages/NearMissPage';
 import { NearMissDetailPage } from './pages/near-miss/NearMissDetailPage';
+import { NearMissNewPage } from './pages/near-miss/NearMissNewPage';
 import { JsaPage } from './pages/JsaPage';
 import { JsaNewPage } from './pages/jsa/JsaNewPage';
 import { JsaDetailPage } from './pages/jsa/JsaDetailPage';
+import { RiskAssessmentsPage } from './pages/RiskAssessmentsPage';
+import { RiskAssessmentNewPage } from './pages/risk-assessments/RiskAssessmentNewPage';
+import { RiskAssessmentDetailPage } from './pages/risk-assessments/RiskAssessmentDetailPage';
 import { PtwPage } from './pages/PtwPage';
 import { PtwNewPage } from './pages/ptw/PtwNewPage';
 import { PtwDetailPage } from './pages/ptw/PtwDetailPage';
@@ -99,12 +104,17 @@ function AppRoutes() {
           <Route path="/incidents/new" element={<IncidentNewPage />} />
           <Route path="/incidents/:id" element={<IncidentDetailPage />} />
           <Route path="/hazards" element={<HazardsPage />} />
+          <Route path="/hazards/new" element={<HazardNewPage />} />
           <Route path="/hazards/:id" element={<HazardDetailPage />} />
           <Route path="/near-miss" element={<NearMissPage />} />
+          <Route path="/near-miss/new" element={<NearMissNewPage />} />
           <Route path="/near-miss/:id" element={<NearMissDetailPage />} />
           <Route path="/jsa" element={<JsaPage />} />
           <Route path="/jsa/new" element={<JsaNewPage />} />
           <Route path="/jsa/:id" element={<JsaDetailPage />} />
+          <Route path="/risk-assessments" element={<RiskAssessmentsPage />} />
+          <Route path="/risk-assessments/new" element={<RiskAssessmentNewPage />} />
+          <Route path="/risk-assessments/:id" element={<RiskAssessmentDetailPage />} />
           <Route path="/ptw" element={<PtwPage />} />
           <Route path="/ptw/new" element={<PtwNewPage />} />
           <Route path="/ptw/:id" element={<PtwDetailPage />} />

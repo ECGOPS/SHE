@@ -7,6 +7,7 @@ const ENDPOINTS: Record<QueuedRequest['kind'], string> = {
   hazard: '/hazards',
   'near-miss': '/near-miss',
   jsa: '/jsa',
+  'risk-assessment': '/risk-assessments',
   inspection: '/inspections',
   'capa-progress': '/corrective-actions',
 };

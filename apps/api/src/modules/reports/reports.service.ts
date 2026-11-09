@@ -10,6 +10,7 @@ import { Incident } from '../incidents/entities/incident.entity';
 import { NearMiss } from '../near-miss/entities/near-miss.entity';
 import { Hazard } from '../hazards/entities/hazard.entity';
 import { JsaRecord } from '../jsa/entities/jsa.entity';
+import { RiskAssessment } from '../risk-assessments/entities/risk-assessment.entity';
 import { Permit } from '../ptw/entities/permit.entity';
 import { Inspection } from '../inspections/entities/inspection.entity';
 import { AuditRecord } from '../audits/entities/audit-record.entity';
@@ -39,6 +40,7 @@ export class ReportsService {
     @InjectRepository(NearMiss) private readonly nearMisses: Repository<NearMiss>,
     @InjectRepository(Hazard) private readonly hazards: Repository<Hazard>,
     @InjectRepository(JsaRecord) private readonly jobs: Repository<JsaRecord>,
+    @InjectRepository(RiskAssessment) private readonly riskAssessments: Repository<RiskAssessment>,
     @InjectRepository(Permit) private readonly permits: Repository<Permit>,
     @InjectRepository(Inspection) private readonly inspections: Repository<Inspection>,
     @InjectRepository(AuditRecord) private readonly audits: Repository<AuditRecord>,
@@ -64,6 +66,7 @@ export class ReportsService {
     this.sheet(wb, 'Near-misses', ['Reference', 'Status', 'Title', 'Potential', 'Confidential', 'Region', 'District', 'Occurred'], pack.nearMisses);
     this.sheet(wb, 'Hazards', ['Reference', 'Status', 'Category', 'Title', 'Region', 'District', 'Recorded'], pack.hazards);
     this.sheet(wb, 'Job briefings', ['Reference', 'Status', 'Work', 'Place', 'Region', 'District', 'Job date'], pack.jobs);
+    this.sheet(wb, 'Risk assessments', ['Reference', 'Status', 'Activity', 'Location', 'Conclusion', 'Region', 'District', 'Assessment date'], pack.riskAssessments);
     this.sheet(wb, 'Permits', ['Reference', 'Type', 'Status', 'Work', 'Region', 'District', 'From', 'To'], pack.permits);
     this.sheet(wb, 'Inspections', ['Reference', 'Type', 'Status', 'Place', 'Score', 'Region', 'District', 'Inspected'], pack.inspections);
     this.sheet(wb, 'Audits', ['Reference', 'Type', 'Status', 'Scope', 'Region', 'District', 'Scheduled'], pack.audits);
@@ -121,11 +124,12 @@ export class ReportsService {
   }
 
   private async gather(user: AuthUser, from?: Date, to?: Date) {
-    const [incidents, nearMisses, hazards, jobs, permits, inspections, audits, environmental, actions, training, issued, stock, health] = await Promise.all([
+    const [incidents, nearMisses, hazards, jobs, riskAssessments, permits, inspections, audits, environmental, actions, training, issued, stock, health] = await Promise.all([
       this.load(this.incidents, 'r', user, from, to),
       this.load(this.nearMisses, 'r', user, from, to),
       this.load(this.hazards, 'r', user, from, to),
       this.load(this.jobs, 'r', user, from, to),
+      this.load(this.riskAssessments, 'r', user, from, to),
       this.load(this.permits, 'r', user, from, to),
       this.load(this.inspections, 'r', user, from, to),
       this.load(this.audits, 'r', user, from, to),
@@ -152,6 +156,15 @@ export class ReportsService {
     const nearRows = nearMisses.map((row) => ({ Reference: row.referenceCode, Status: row.status, Title: row.title, Potential: row.severityPotential ?? '', Confidential: row.anonymous ? 'Yes' : 'No', ...place(row), Occurred: day(row.occurredAt) }));
     const hazardRows = hazards.map((row) => ({ Reference: row.referenceCode, Status: row.status, Category: String(row.category), Title: row.title, ...place(row), Recorded: day(row.createdAt) }));
     const jobRows = jobs.map((row) => ({ Reference: row.referenceCode, Status: row.status, Work: row.workActivity, Place: row.jobLocation ?? '', ...place(row), 'Job date': day(row.jobDate) }));
+    const riskRows = riskAssessments.map((row) => ({
+      Reference: row.referenceCode,
+      Status: row.status,
+      Activity: row.activityBeingDone,
+      Location: row.locationWorkplace,
+      Conclusion: row.controlConclusion ?? '',
+      ...place(row),
+      'Assessment date': day(row.assessmentDate),
+    }));
     const permitRows = permits.map((row) => ({ Reference: row.referenceCode, Type: String(row.type), Status: String(row.status), Work: row.workDescription, ...place(row), From: day(row.validFrom), To: day(row.validTo) }));
     const inspectionRows = inspections.map((row) => ({ Reference: row.referenceCode, Type: String(row.type), Status: row.status, Place: row.assetOrLocation, Score: row.scorePercent, ...place(row), Inspected: day(row.inspectedAt) }));
     const auditRows = audits.map((row) => ({ Reference: row.referenceCode, Type: String(row.type), Status: String(row.status), Scope: row.scope, ...place(row), Scheduled: day(row.scheduledDate) }));
@@ -168,6 +181,7 @@ export class ReportsService {
       { activity: 'Near-misses', records: nearRows.length, open: open(nearRows) },
       { activity: 'Hazards', records: hazardRows.length, open: open(hazardRows) },
       { activity: 'Job briefings', records: jobRows.length, open: jobRows.filter((row) => row.Status !== 'APPROVED' && row.Status !== 'REJECTED').length },
+      { activity: 'Risk assessments', records: riskRows.length, open: riskRows.filter((row) => row.Status !== 'APPROVED' && row.Status !== 'REJECTED').length },
       { activity: 'Permits', records: permitRows.length, open: permitRows.filter((row) => !['CLOSED', 'REJECTED', 'EXPIRED', 'CANCELLED'].includes(String(row.Status))).length },
       { activity: 'Inspections', records: inspectionRows.length, open: open(inspectionRows) },
       { activity: 'Audits', records: auditRows.length, open: open(auditRows) },
@@ -183,6 +197,7 @@ export class ReportsService {
       nearMisses: nearRows,
       hazards: hazardRows,
       jobs: jobRows,
+      riskAssessments: riskRows,
       permits: permitRows,
       inspections: inspectionRows,
       audits: auditRows,

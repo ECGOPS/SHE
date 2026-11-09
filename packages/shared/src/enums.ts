@@ -309,7 +309,7 @@ export type DocumentStatus = (typeof DOCUMENT_STATUS)[number];
 export const ISSUE_ORIGIN = ['INTERNAL', 'EXTERNAL'] as const;
 export type IssueOrigin = (typeof ISSUE_ORIGIN)[number];
 
-export const PROTOCOL_LINK_KIND = ['DOCUMENT', 'JSA', 'HAZARD', 'CHANGE'] as const;
+export const PROTOCOL_LINK_KIND = ['DOCUMENT', 'JSA', 'HAZARD', 'RISK_ASSESSMENT', 'CHANGE'] as const;
 export type ProtocolLinkKind = (typeof PROTOCOL_LINK_KIND)[number];
 
 /**
@@ -541,3 +541,185 @@ export const AUDIT_CRITERIA_FRAMEWORK = [
   'COMPANY_HSE_MS',
   'REGULATORY_NATIONAL',
 ] as const;
+
+/** ECG Risk Assessment Form — overall control conclusion. */
+export const RISK_ASSESSMENT_CONTROL_STATUS = [
+  'ADEQUATELY_CONTROLLED',
+  'INADEQUATELY_CONTROLLED',
+] as const;
+export type RiskAssessmentControlStatus = (typeof RISK_ASSESSMENT_CONTROL_STATUS)[number];
+
+export enum RiskAssessmentStatus {
+  DRAFT = 'DRAFT',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
+/** Who may be harmed — ECG Risk Assessment Form. */
+export const RISK_ASSESSMENT_PERSONS_AT_RISK = [
+  'ECG_EMPLOYEE',
+  'VISITORS',
+  'CONTRACTOR_SITE_WORKERS',
+  'DRIVERS',
+  'GENERAL_PUBLIC',
+  'CUSTOMERS',
+] as const;
+export type RiskAssessmentPersonAtRisk = (typeof RISK_ASSESSMENT_PERSONS_AT_RISK)[number];
+
+export const RISK_ASSESSMENT_PERSON_LABEL: Record<RiskAssessmentPersonAtRisk, string> = {
+  ECG_EMPLOYEE: 'ECG Employee',
+  VISITORS: 'Visitors',
+  CONTRACTOR_SITE_WORKERS: 'Contractor/Site Workers',
+  DRIVERS: 'Drivers',
+  GENERAL_PUBLIC: 'General Public',
+  CUSTOMERS: 'Customers',
+};
+
+/**
+ * Tick-list hazards from the ECG Risk Assessment Form, grouped by section.
+ * Values are stable ids stored on the record; labels are shown in the UI.
+ */
+export const RISK_ASSESSMENT_HAZARD_GROUPS: ReadonlyArray<{
+  id: string;
+  label: string;
+  items: ReadonlyArray<{ id: string; label: string }>;
+}> = [
+  {
+    id: 'GENERAL_WORK_ENVIRONMENT',
+    label: 'General Work Environment',
+    items: [
+      { id: 'RESTRICTED_ACCESS_OR_EGRESS', label: 'Restricted Access or Egress' },
+      { id: 'CONFINED_SPACES', label: 'Confined Spaces' },
+      { id: 'AIR_QUALITY', label: 'Air Quality' },
+      { id: 'AIR_CONDITIONING', label: 'Air-Conditioning (Thermal Comfort)' },
+      { id: 'NOISE', label: 'Noise' },
+      { id: 'SUN_OR_HEAT_EXPOSURE', label: 'Sun or heat exposure' },
+      { id: 'UNEVEN_WALKING_SURFACES', label: 'Uneven Walking Surfaces' },
+      { id: 'WORKING_AT_HEIGHT', label: 'Working at Height' },
+      { id: 'POOR_ILLUMINATION', label: 'Poor Illumination' },
+      { id: 'POOR_VENTILATION', label: 'Poor Ventilation' },
+      { id: 'WET_FLOOR', label: 'Wet floor' },
+      { id: 'TRAILING_CABLES', label: 'Trailing cables' },
+    ],
+  },
+  {
+    id: 'HEALTH_AND_SECURITY',
+    label: 'Health & Security',
+    items: [
+      { id: 'WORK_RELATED_HEALTH_HAZARDS', label: 'Work related Health Hazards' },
+      { id: 'WATER_QUALITY', label: 'Water Quality' },
+      { id: 'DEHYDRATION', label: 'Dehydration' },
+      { id: 'VIOLENCE', label: 'Violence' },
+      { id: 'LONE_WORK', label: 'Lone Work' },
+      { id: 'INSECT_BITE', label: 'Insect bite' },
+      { id: 'HIV_AIDS', label: 'HIV/AIDS' },
+      { id: 'NIGHT_WORK', label: 'Night work' },
+      { id: 'BUSH_WORK', label: 'Bush work' },
+      { id: 'LIGHTNING_HEALTH', label: 'Lightning' },
+      { id: 'ROADS_AND_HIGHWAYS', label: 'Roads and Highways' },
+      { id: 'CONTAGIOUS_DISEASES', label: 'Contagious diseases' },
+    ],
+  },
+  {
+    id: 'VEHICLES_AND_EQUIPMENT',
+    label: 'Vehicles & Equipment',
+    items: [
+      { id: 'VEHICLES', label: 'Vehicles' },
+      { id: 'POWERED_EQUIPMENT', label: 'Powered Equipment' },
+      { id: 'NON_POWERED_EQUIPMENT', label: 'Non-Powered Equipment' },
+      { id: 'ELEVATED_WORK_PLATFORMS', label: 'Elevated Work Platforms' },
+      { id: 'ELECTRICAL_EQUIPMENT', label: 'Electrical Equipment' },
+      { id: 'TRAFFIC_CONTROL', label: 'Traffic Control and Management' },
+      { id: 'VIBRATION', label: 'Vibration' },
+      { id: 'LADDERS', label: 'Ladders' },
+      { id: 'CRANES', label: 'Cranes' },
+      { id: 'FORKLIFT', label: 'Forklift' },
+      { id: 'HAND_AND_POWER_TOOLS', label: 'Hand and Power Tools' },
+      { id: 'MECHANIZED_EQUIPMENT', label: 'Mechanized Equipment' },
+    ],
+  },
+  {
+    id: 'ERGONOMIC_MANUAL_HANDLING',
+    label: 'Ergonomic/Manual Handling',
+    items: [
+      { id: 'WORKSTATION_SETUP', label: 'Workstation Setup' },
+      { id: 'POOR_POSTURE', label: 'Poor Posture' },
+      { id: 'LIFTING_CARRYING', label: 'Lifting/Carrying' },
+      { id: 'PUSHING_PULLING', label: 'Pushing/Pulling' },
+      { id: 'REACHING_OUTSTRETCHING', label: 'Reaching/Outstretching' },
+      { id: 'REPETITIVE_MOVEMENT', label: 'Repetitive Movement' },
+      { id: 'BENDING', label: 'Bending' },
+      { id: 'EYE_STRAIN', label: 'Eye Strain' },
+    ],
+  },
+  {
+    id: 'CHEMICAL',
+    label: 'Chemical',
+    items: [
+      { id: 'HAZARDOUS_CHEMICALS_PCB_SF6', label: 'Hazardous Chemicals (PCBs, SF6)' },
+      { id: 'HAZARDOUS_MATERIALS', label: 'Hazardous Materials' },
+      { id: 'BUTANE', label: 'Butane' },
+      { id: 'PROPANE_GAS', label: 'Propane Gas' },
+      { id: 'FUEL_PETROL', label: 'Fuel/Petrol' },
+      { id: 'DIESEL', label: 'Diesel' },
+      { id: 'TURPENTINE', label: 'Turpentine' },
+      { id: 'ALCOHOL_BASED_SANITIZERS', label: 'Alcohol-based sanitizers (flammable)' },
+      { id: 'HYDROGEN_GAS', label: 'Hydrogen gas' },
+    ],
+  },
+  {
+    id: 'TEMPERATURE_OR_WEATHER',
+    label: 'Temperature or Weather Effects',
+    items: [
+      { id: 'HEAT', label: 'Heat' },
+      { id: 'RAIN_FLOOD', label: 'Rain/Flood' },
+      { id: 'LIGHTNING_WEATHER', label: 'Lightning' },
+      { id: 'SMOKE', label: 'Smoke' },
+      { id: 'WIND', label: 'Wind' },
+      { id: 'STORM', label: 'Storm' },
+      { id: 'EARTH_TREMOR', label: 'Earth tremor or quake' },
+      { id: 'MUD_SLIDE', label: 'Mud slide' },
+    ],
+  },
+  {
+    id: 'WORKPLACE_ISSUES',
+    label: 'Workplace Issues & Management',
+    items: [
+      { id: 'FATIGUE', label: 'Fatigue' },
+      { id: 'STRESS', label: 'Stress' },
+      { id: 'ORGANIZATIONAL_CHANGE', label: 'Organizational Change' },
+      { id: 'WORKPLACE_VIOLENCE_BULLYING', label: 'Workplace violence or Bullying' },
+      { id: 'HARASSMENT', label: 'Harassment' },
+      { id: 'INTIMIDATION', label: 'Intimidation' },
+    ],
+  },
+  {
+    id: 'RADIATION',
+    label: 'Radiation',
+    items: [
+      { id: 'RADIOACTIVE_EXPOSURE', label: 'Radioactive exposure' },
+      { id: 'ULTRAVIOLET_RADIATION', label: 'Ultraviolet (UV) Radiation' },
+      { id: 'INFRARED_RADIATION', label: 'Infrared Radiation' },
+      { id: 'STATIC_MAGNETIC_FIELDS', label: 'Static magnetic fields' },
+      { id: 'ELECTROMAGNETIC_FIELDS', label: 'Electromagnetic fields exposure' },
+    ],
+  },
+  {
+    id: 'OTHER_HAZARDS',
+    label: 'Other Hazards',
+    items: [
+      { id: 'FIRE_OUTBREAK', label: 'Fire Outbreak/Fire Hazards' },
+      { id: 'ELECTRIC_SHOCKS', label: 'Electric Shocks' },
+      { id: 'ELECTROCUTION', label: 'Electrocution' },
+      { id: 'EXHAUST_AND_DUST', label: 'Exhaust and dust emissions' },
+      { id: 'ASBESTOS', label: 'Asbestos' },
+      { id: 'SILICON_DERIVATIVES', label: 'Silicon derivatives' },
+    ],
+  },
+] as const;
+
+export const RISK_ASSESSMENT_HAZARD_IDS = RISK_ASSESSMENT_HAZARD_GROUPS.flatMap((g) =>
+  g.items.map((item) => item.id),
+);
+

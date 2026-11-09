@@ -1,5 +1,5 @@
 import { GridColDef } from '@mui/x-data-grid';
-import { HazardCategory, Permission } from '@ecg-she/shared';
+import { Permission } from '@ecg-she/shared';
 import { ModulePage, dateCol, regionCol, statusChip } from '../components/ModulePage';
 import { endpoints } from '../api/endpoints';
 
@@ -39,6 +39,7 @@ const cols: GridColDef[] = [
     width: 130,
     renderCell: (p) => statusChip(p.value, STATUS_COLOR),
   },
+  dateCol('occurredAt', 'Occurred', 140),
   dateCol('createdAt', 'Reported'),
 ];
 
@@ -53,51 +54,13 @@ export function HazardsPage() {
       columns={cols}
       ctaLabel="Report hazard"
       permission={Permission.HAZARD_CREATE}
+      createPath="/hazards/new"
+      formFields={[]}
       allowPhotos
       allowLocation
       offlineKind="hazard"
       rowHref={(row) => `/hazards/${(row as { id: string }).id}`}
       createdPath={(created) => (created.id ? `/hazards/${created.id}` : undefined)}
-      formFields={[
-        {
-          name: '__std',
-          type: 'info',
-          label: 'What to report',
-          helperText:
-            'A hazard is a condition that could hurt someone. If something nearly happened, use Near miss. The safety officer rates the risk and chooses the control. ISO 45001 §6.1.2.',
-        },
-        {
-          name: 'regionId',
-          label: 'Region',
-          type: 'select',
-          required: true,
-          computeDefault: (s) => s?.user.regionId ?? '',
-        },
-        { name: 'title', label: 'What is wrong', type: 'text', required: true },
-        { name: 'description', label: 'Describe the condition', type: 'textarea', required: true },
-        {
-          name: 'category',
-          label: 'Category',
-          type: 'select',
-          required: true,
-          options: Object.values(HazardCategory),
-        },
-        {
-          name: 'peopleExposed',
-          label: 'People are exposed to this now',
-          type: 'boolean',
-          defaultValue: false,
-        },
-        {
-          name: 'immediateAction',
-          label: 'What did you do to make it safe?',
-          type: 'textarea',
-          helperText: 'Isolate, barricade, or stop the job. Leave blank if you could not make it safe.',
-        },
-        { name: 'locationName', label: 'Location', type: 'text' },
-        { name: 'latitude', label: 'Latitude', type: 'number' },
-        { name: 'longitude', label: 'Longitude', type: 'number' },
-      ]}
     />
   );
 }

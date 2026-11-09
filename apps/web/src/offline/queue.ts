@@ -11,7 +11,7 @@ import type { AuthUser } from '@ecg-she/shared';
 
 export interface QueuedRequest {
   id?: number;
-  kind: 'incident' | 'hazard' | 'near-miss' | 'inspection' | 'capa-progress' | 'jsa';
+  kind: 'incident' | 'hazard' | 'near-miss' | 'inspection' | 'capa-progress' | 'jsa' | 'risk-assessment';
   payload: Record<string, unknown>;
   createdAt: number;
   attempts: number;

@@ -36,6 +36,7 @@ const SOURCE_LABEL: Record<string, string> = {
   INSPECTION: 'Inspection',
   AUDIT_FINDING: 'Audit finding',
   ENVIRONMENTAL_EVENT: 'Environmental event',
+  RISK_ASSESSMENT: 'Risk assessment',
   INTERNAL_REVIEW: 'Management review',
   CUSTOMER_COMPLAINT: 'Complaint',
 };
@@ -88,6 +89,11 @@ export function CapaDetailPage() {
   const hazards = useQuery({
     queryKey: ['hazard-protocol-links'],
     queryFn: () => endpoints.hazards({ pageSize: 50 }),
+    enabled: canUpdate,
+  });
+  const riskAssessments = useQuery({
+    queryKey: ['risk-assessment-protocol-links'],
+    queryFn: () => endpoints.riskAssessments({ pageSize: 50 }),
     enabled: canUpdate,
   });
   useEffect(() => {
@@ -273,6 +279,7 @@ export function CapaDetailPage() {
                         <MenuItem value="DOCUMENT">Controlled document</MenuItem>
                         <MenuItem value="JSA">Job safety analysis</MenuItem>
                         <MenuItem value="HAZARD">Hazard</MenuItem>
+                        <MenuItem value="RISK_ASSESSMENT">Risk assessment</MenuItem>
                         <MenuItem value="CHANGE">Management of change</MenuItem>
                       </TextField>
                       {protocolLinkKind === 'DOCUMENT' && (
@@ -300,6 +307,15 @@ export function CapaDetailPage() {
                         <TextField select label="Hazard" value={protocolLinkId} onChange={(e) => setProtocolLinkId(e.target.value)} required fullWidth>
                           {(hazards.data?.items ?? []).map((row) => (
                             <MenuItem key={String(row.id)} value={String(row.id)}>{String(row.referenceCode ?? '')} · {String(row.title)}</MenuItem>
+                          ))}
+                        </TextField>
+                      )}
+                      {protocolLinkKind === 'RISK_ASSESSMENT' && (
+                        <TextField select label="Risk assessment" value={protocolLinkId} onChange={(e) => setProtocolLinkId(e.target.value)} required fullWidth>
+                          {(riskAssessments.data?.items ?? []).map((row) => (
+                            <MenuItem key={String(row.id)} value={String(row.id)}>
+                              {String(row.referenceCode ?? '')} · {String(row.activityBeingDone ?? row.title ?? '')}
+                            </MenuItem>
                           ))}
                         </TextField>
                       )}

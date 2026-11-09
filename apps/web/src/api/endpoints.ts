@@ -136,6 +136,8 @@ export interface HazardDto {
   description: string;
   category: string;
   status: string;
+  occurredAt?: string | null;
+  createdAt?: string;
   peopleExposed?: boolean;
   immediateAction?: string | null;
   locationName?: string | null;
@@ -269,6 +271,25 @@ export const endpoints = {
   approveJsa: (id: string) => unwrap<AnyRecord>(api.post(`/jsa/${id}/approve`)),
   rejectJsa: (id: string, notes: string) => unwrap<AnyRecord>(api.post(`/jsa/${id}/reject`, { notes })),
   reviseJsa: (id: string) => unwrap<AnyRecord>(api.post(`/jsa/${id}/revise`)),
+
+  // ── Risk assessments ────────────────────────────────────────────────────
+  riskAssessments: (params: Record<string, unknown> = {}) =>
+    unwrap<PaginatedResult<AnyRecord>>(api.get('/risk-assessments', { params })),
+  riskAssessmentOne: (id: string) => unwrap<AnyRecord>(api.get(`/risk-assessments/${id}`)),
+  riskAssessmentReport: (id: string) =>
+    api.get(`/risk-assessments/${id}/report`, { responseType: 'blob', timeout: 60_000 }),
+  createRiskAssessment: (body: Record<string, unknown>) =>
+    unwrap<AnyRecord>(api.post('/risk-assessments', body)),
+  updateRiskAssessment: (id: string, body: Record<string, unknown>) =>
+    unwrap<AnyRecord>(api.patch(`/risk-assessments/${id}`, body)),
+  submitRiskAssessment: (id: string) =>
+    unwrap<AnyRecord>(api.post(`/risk-assessments/${id}/submit`)),
+  approveRiskAssessment: (id: string) =>
+    unwrap<AnyRecord>(api.post(`/risk-assessments/${id}/approve`)),
+  rejectRiskAssessment: (id: string, notes: string) =>
+    unwrap<AnyRecord>(api.post(`/risk-assessments/${id}/reject`, { notes })),
+  reviseRiskAssessment: (id: string) =>
+    unwrap<AnyRecord>(api.post(`/risk-assessments/${id}/revise`)),
 
   // ── PTW ─────────────────────────────────────────────────────────────────
   ptw: (params: Record<string, unknown> = {}) =>

@@ -101,7 +101,7 @@ export class HazardsService {
         ? computeRiskScore(dto.residualLikelihood as RiskLikelihood, dto.residualSeverity as RiskSeverity)
         : null;
 
-    const { photos, ...fields } = dto;
+    const { photos, occurredAt, ...fields } = dto;
     const hazard = this.hazards.create({
       ...fields,
       regionId: scoped.regionId,
@@ -112,6 +112,7 @@ export class HazardsService {
       riskClass,
       residualRiskScore,
       peopleExposed: dto.peopleExposed === true,
+      occurredAt: occurredAt ? new Date(occurredAt) : new Date(),
       targetCompletionDate: dto.targetCompletionDate ? new Date(dto.targetCompletionDate) : null,
       currentScope: issueScopeForPlace(scoped),
       status: 'OPEN',
@@ -139,7 +140,7 @@ export class HazardsService {
       qb.andWhere('(LOWER(h.title) LIKE LOWER(:s) OR LOWER(h.referenceCode) LIKE LOWER(:s))', { s: term });
     }
     qb.orderBy(
-      orderColumn('h', query.sortBy, ['createdAt', 'referenceCode', 'riskScore', 'status', 'title'], 'createdAt'),
+      orderColumn('h', query.sortBy, ['createdAt', 'occurredAt', 'referenceCode', 'riskScore', 'status', 'title'], 'createdAt'),
       query.sortDir === 'ASC' ? 'ASC' : 'DESC',
     );
     return paginate(qb, query);

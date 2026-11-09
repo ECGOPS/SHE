@@ -19,12 +19,21 @@ import { AuditFinding } from '../audits/entities/audit-finding.entity';
 import { AuditRecord } from '../audits/entities/audit-record.entity';
 import { EnvironmentalEvent } from '../environmental/entities/environmental-event.entity';
 import { JsaRecord } from '../jsa/entities/jsa.entity';
+import { RiskAssessment } from '../risk-assessments/entities/risk-assessment.entity';
 import { ManagementRecord } from '../management-system/entities/management-record.entity';
 import { applyStatus, orderColumn, paginate, searchTerm } from '../../common/pagination';
 import { renderSheReport, reportFilename } from '../../common/pdf/she-report';
 import { capaReport } from '../../common/pdf/record-reports';
 
-const LINKED_SOURCES = new Set(['INCIDENT', 'HAZARD', 'NEAR_MISS', 'INSPECTION', 'AUDIT_FINDING', 'ENVIRONMENTAL_EVENT']);
+const LINKED_SOURCES = new Set([
+  'INCIDENT',
+  'HAZARD',
+  'NEAR_MISS',
+  'INSPECTION',
+  'AUDIT_FINDING',
+  'ENVIRONMENTAL_EVENT',
+  'RISK_ASSESSMENT',
+]);
 const NEEDS_CAUSE = new Set(['CORRECTIVE_ACTION', 'PREVENTIVE_ACTION']);
 
 @Injectable()
@@ -40,6 +49,7 @@ export class CorrectiveActionsService {
     @InjectRepository(AuditRecord) private readonly audits: Repository<AuditRecord>,
     @InjectRepository(EnvironmentalEvent) private readonly environmental: Repository<EnvironmentalEvent>,
     @InjectRepository(JsaRecord) private readonly jsas: Repository<JsaRecord>,
+    @InjectRepository(RiskAssessment) private readonly riskAssessments: Repository<RiskAssessment>,
     @InjectRepository(ManagementRecord) private readonly management: Repository<ManagementRecord>,
     private readonly scope: RbacScopeService,
     private readonly orgs: OrganizationsService,
@@ -292,6 +302,7 @@ export class CorrectiveActionsService {
     if (!action.protocolLinkKind || !action.protocolLinkId) return null;
     if (action.protocolLinkKind === 'HAZARD') return `/hazards/${action.protocolLinkId}`;
     if (action.protocolLinkKind === 'JSA') return `/jsa/${action.protocolLinkId}`;
+    if (action.protocolLinkKind === 'RISK_ASSESSMENT') return `/risk-assessments/${action.protocolLinkId}`;
     return '/management';
   }
 
@@ -312,6 +323,14 @@ export class CorrectiveActionsService {
       }
       return;
     }
+    if (kind === 'RISK_ASSESSMENT') {
+      const row = await this.riskAssessments.findOne({ where: { id } });
+      if (!row) throw new BadRequestException('That risk assessment was not found');
+      if (!isGlobalScope(user.role) && row.regionId !== user.regionId) {
+        throw new BadRequestException('That risk assessment is outside your region');
+      }
+      return;
+    }
     const expectedKind = kind === 'CHANGE' ? 'CHANGE' : 'DOCUMENT';
     const row = await this.management.findOne({ where: { id, kind: expectedKind } });
     if (!row) throw new BadRequestException('That management record was not found');
@@ -327,6 +346,7 @@ export class CorrectiveActionsService {
     if (action.sourceType === 'NEAR_MISS') return `/near-miss/${action.sourceId}`;
     if (action.sourceType === 'INSPECTION') return `/inspections/${action.sourceId}`;
     if (action.sourceType === 'ENVIRONMENTAL_EVENT') return `/environmental/${action.sourceId}`;
+    if (action.sourceType === 'RISK_ASSESSMENT') return `/risk-assessments/${action.sourceId}`;
     if (action.sourceType === 'AUDIT_FINDING') {
       const finding = await this.findings.findOne({ where: { id: action.sourceId } });
       return finding ? `/audits/${finding.auditId}` : null;
@@ -341,7 +361,9 @@ export class CorrectiveActionsService {
     else if (sourceType === 'NEAR_MISS') foundRegion = (await this.nearMisses.findOne({ where: { id: sourceId } }))?.regionId ?? null;
     else if (sourceType === 'INSPECTION') foundRegion = (await this.inspections.findOne({ where: { id: sourceId } }))?.regionId ?? null;
     else if (sourceType === 'ENVIRONMENTAL_EVENT') foundRegion = (await this.environmental.findOne({ where: { id: sourceId } }))?.regionId ?? null;
-    else if (sourceType === 'AUDIT_FINDING') {
+    else if (sourceType === 'RISK_ASSESSMENT') {
+      foundRegion = (await this.riskAssessments.findOne({ where: { id: sourceId } }))?.regionId ?? null;
+    } else if (sourceType === 'AUDIT_FINDING') {
       const finding = await this.findings.findOne({ where: { id: sourceId } });
       const audit = finding ? await this.audits.findOne({ where: { id: finding.auditId } }) : null;
       foundRegion = audit?.regionId ?? null;

@@ -16,6 +16,7 @@ import { AuditFinding } from '../audits/entities/audit-finding.entity';
 import { AuditRecord } from '../audits/entities/audit-record.entity';
 import { EnvironmentalEvent } from '../environmental/entities/environmental-event.entity';
 import { JsaRecord } from '../jsa/entities/jsa.entity';
+import { RiskAssessment } from '../risk-assessments/entities/risk-assessment.entity';
 import { ManagementRecord } from '../management-system/entities/management-record.entity';
 
 @Module({
@@ -31,6 +32,7 @@ import { ManagementRecord } from '../management-system/entities/management-recor
       AuditRecord,
       EnvironmentalEvent,
       JsaRecord,
+      RiskAssessment,
       ManagementRecord,
     ]),
     AuthModule,

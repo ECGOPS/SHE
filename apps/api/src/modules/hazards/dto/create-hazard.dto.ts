@@ -31,6 +31,8 @@ export class CreateHazardDto {
   @ApiProperty() @IsString() @MaxLength(4000) description!: string;
   @ApiProperty({ enum: HazardCategory }) @IsEnum(HazardCategory) category!: HazardCategory;
 
+  @ApiPropertyOptional() @IsOptional() @IsDateString() occurredAt?: string;
+
   @ApiPropertyOptional() @IsOptional() @IsBoolean() peopleExposed?: boolean;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(4000) immediateAction?: string;
 

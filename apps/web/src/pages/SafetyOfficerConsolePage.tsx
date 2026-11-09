@@ -139,7 +139,7 @@ function KpiTile({ title, value, subtitle, icon, accent, to }: KpiTileProps) {
 
 interface QueueItem {
   id: string;
-  module: 'incident' | 'hazard' | 'capa' | 'ptw' | 'near-miss';
+  module: 'incident' | 'hazard' | 'capa' | 'ptw' | 'near-miss' | 'risk-assessment';
   reference: string;
   title: string;
   status?: string;
@@ -195,6 +195,7 @@ function queueRoute(it: QueueItem): string {
     case 'capa': return `/capa`;
     case 'ptw': return `/ptw/${it.id}`;
     case 'near-miss': return `/near-miss/${it.id}`;
+    case 'risk-assessment': return `/risk-assessments/${it.id}`;
   }
 }
 
@@ -205,6 +206,7 @@ function moduleColor(m: QueueItem['module']): 'primary' | 'warning' | 'error' | 
     case 'capa': return 'primary';
     case 'ptw': return 'info';
     case 'near-miss': return 'success';
+    case 'risk-assessment': return 'warning';
   }
 }
 
@@ -357,6 +359,10 @@ export function SafetyOfficerConsolePage() {
     queryKey: ['console', 'ptw'],
     queryFn: () => endpoints.ptw({ status: 'PENDING_APPROVAL,APPROVED,ACTIVE,SUSPENDED,EXPIRED', pageSize: 100 }),
   });
+  const riskAssessments = useQuery({
+    queryKey: ['console', 'risk-assessments'],
+    queryFn: () => endpoints.riskAssessments({ status: 'PENDING_APPROVAL', pageSize: 100, sortBy: 'createdAt', sortDir: 'DESC' }),
+  });
   const assigned = useQuery({
     queryKey: ['console', 'assigned', session?.user.id],
     queryFn: () =>
@@ -379,6 +385,10 @@ export function SafetyOfficerConsolePage() {
   );
   const capaItems = useMemo(() => (capas.data?.items ?? []) as AnyRecord[], [capas.data?.items]);
   const ptwItems = useMemo(() => (ptw.data?.items ?? []) as AnyRecord[], [ptw.data?.items]);
+  const riskItems = useMemo(
+    () => (riskAssessments.data?.items ?? []) as unknown as AnyRecord[],
+    [riskAssessments.data?.items],
+  );
   const nmItems = useMemo(
     () => (nearMiss.data?.items ?? []) as unknown as AnyRecord[],
     [nearMiss.data?.items],
@@ -421,6 +431,10 @@ export function SafetyOfficerConsolePage() {
   const pendingPermits = useMemo(
     () => ptwItems.filter((p) => ACTION_PTW_STATUSES.has(String(p.status))),
     [ptwItems],
+  );
+  const pendingRiskAssessments = useMemo(
+    () => riskItems.filter((row) => String(row.status) === 'PENDING_APPROVAL'),
+    [riskItems],
   );
   const openNearMisses = useMemo(
     () => nmItems.filter((n) => String(n.status ?? 'OPEN') !== 'CLOSED' && !n.resolvedAt),
@@ -540,6 +554,23 @@ export function SafetyOfficerConsolePage() {
         reason: permitQueueReason(String(p.status)),
       });
     }
+    for (const row of pendingRiskAssessments) {
+      q.push({
+        id: String(row.id),
+        module: 'risk-assessment',
+        reference: String(row.referenceCode ?? row.id),
+        title: String(row.activityBeingDone ?? row.title ?? '—'),
+        status: String(row.status),
+        severity: String(row.controlConclusion ?? ''),
+        createdAt: String(row.createdAt ?? row.assessmentDate ?? ''),
+        region: row.region?.name,
+        district: row.district?.name,
+        reason:
+          String(row.controlConclusion) === 'INADEQUATELY_CONTROLLED'
+            ? 'Inadequately controlled — review CAPA then accept'
+            : 'Risk assessment waiting for acceptance',
+      });
+    }
 
     // Sort: critical/high severity first, then newest first.
     return q.sort((a, b) => {
@@ -548,7 +579,7 @@ export function SafetyOfficerConsolePage() {
       if (sa !== sb) return sa - sb;
       return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
     });
-  }, [openIncidents, openNearMisses, highRiskHazards, overdueCapas, pendingPermits]);
+  }, [openIncidents, openNearMisses, highRiskHazards, overdueCapas, pendingPermits, pendingRiskAssessments]);
 
   /* ── Header / scope chip ────────────────────────────────────────────── */
 
@@ -563,7 +594,13 @@ export function SafetyOfficerConsolePage() {
         : 'default';
 
   const loading =
-    incidents.isLoading || hazards.isLoading || capas.isLoading || ptw.isLoading || nearMiss.isLoading || assigned.isLoading;
+    incidents.isLoading ||
+    hazards.isLoading ||
+    capas.isLoading ||
+    ptw.isLoading ||
+    nearMiss.isLoading ||
+    riskAssessments.isLoading ||
+    assigned.isLoading;
 
   /* ── Render ─────────────────────────────────────────────────────────── */
 
@@ -664,6 +701,7 @@ export function SafetyOfficerConsolePage() {
           <Tab label={`High-risk hazards (${highRiskHazards.length})`} />
           <Tab label={`CAPAs (${openCapas.length})`} />
           <Tab label={`Permits (${pendingPermits.length})`} />
+          <Tab label={`Risk assessments (${pendingRiskAssessments.length})`} />
           <Tab label={`Near-miss this week (${recentNearMisses.length})`} />
         </Tabs>
 
@@ -774,6 +812,26 @@ export function SafetyOfficerConsolePage() {
           )}
           {tab === 6 && (
             <QueueList
+              items={pendingRiskAssessments.map<QueueItem>((row) => ({
+                id: String(row.id),
+                module: 'risk-assessment',
+                reference: String(row.referenceCode ?? row.id),
+                title: String(row.activityBeingDone ?? row.title ?? '—'),
+                status: String(row.status),
+                severity: String(row.controlConclusion ?? ''),
+                createdAt: String(row.createdAt ?? row.assessmentDate ?? ''),
+                region: row.region?.name,
+                district: row.district?.name,
+                reason:
+                  String(row.controlConclusion) === 'INADEQUATELY_CONTROLLED'
+                    ? 'Inadequately controlled — review CAPA then accept'
+                    : 'Waiting for acceptance',
+              }))}
+              empty="No risk assessments waiting for acceptance."
+            />
+          )}
+          {tab === 7 && (
+            <QueueList
               items={recentNearMisses.map<QueueItem>((n) => ({
                 id: String(n.id),
                 module: 'near-miss',
@@ -820,6 +878,11 @@ export function SafetyOfficerConsolePage() {
             {can(Permission.JSA_CREATE) && (
               <Button component={RouterLink} to="/jsa" variant="outlined" size="small">
                 New JSA
+              </Button>
+            )}
+            {can(Permission.RISK_ASSESSMENT_CREATE) && (
+              <Button component={RouterLink} to="/risk-assessments/new" variant="outlined" size="small">
+                New risk assessment
               </Button>
             )}
             {can(Permission.PTW_CREATE) && (

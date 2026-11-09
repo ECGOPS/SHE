@@ -89,7 +89,7 @@ export class CorrectiveAction extends ScopedEntity {
   protocolUpdateNotes?: string | null;
 
   @Column({ type: 'varchar', length: 16, nullable: true })
-  protocolLinkKind?: 'DOCUMENT' | 'JSA' | 'HAZARD' | 'CHANGE' | null;
+  protocolLinkKind?: 'DOCUMENT' | 'JSA' | 'HAZARD' | 'RISK_ASSESSMENT' | 'CHANGE' | null;
 
   @Column({ type: 'uuid', nullable: true })
   protocolLinkId?: string | null;

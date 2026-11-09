@@ -24,6 +24,7 @@ import { IncidentsModule } from './modules/incidents/incidents.module';
 import { NearMissModule } from './modules/near-miss/near-miss.module';
 import { HazardsModule } from './modules/hazards/hazards.module';
 import { JsaModule } from './modules/jsa/jsa.module';
+import { RiskAssessmentsModule } from './modules/risk-assessments/risk-assessments.module';
 import { PtwModule } from './modules/ptw/ptw.module';
 import { InspectionsModule } from './modules/inspections/inspections.module';
 import { AuditsModule } from './modules/audits/audits.module';
@@ -60,6 +61,7 @@ import { ManagementSystemModule } from './modules/management-system/management-s
     NearMissModule,
     HazardsModule,
     JsaModule,
+    RiskAssessmentsModule,
     PtwModule,
     InspectionsModule,
     AuditsModule,

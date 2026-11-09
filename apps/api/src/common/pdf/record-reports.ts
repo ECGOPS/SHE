@@ -4,6 +4,7 @@ import { IssueEscalation } from '../../modules/escalations/entities/issue-escala
 import { NearMiss } from '../../modules/near-miss/entities/near-miss.entity';
 import { Hazard } from '../../modules/hazards/entities/hazard.entity';
 import { JsaRecord } from '../../modules/jsa/entities/jsa.entity';
+import { RiskAssessment } from '../../modules/risk-assessments/entities/risk-assessment.entity';
 import { Permit } from '../../modules/ptw/entities/permit.entity';
 import { Inspection } from '../../modules/inspections/entities/inspection.entity';
 import { AuditRecord } from '../../modules/audits/entities/audit-record.entity';
@@ -118,8 +119,9 @@ export function hazardReport(row: Hazard, actions: CorrectiveAction[], history: 
         blocks: [
           { kind: 'pair', leftLabel: 'Reference', left: row.referenceCode, rightLabel: 'Status', right: words(row.status) },
           { kind: 'pair', leftLabel: 'Category', left: words(row.category), rightLabel: 'Risk class', right: words(row.riskClass) },
+          { kind: 'pair', leftLabel: 'Occurred', left: when(row.occurredAt ?? row.createdAt), rightLabel: 'Reported by', right: row.reportedBy?.fullName ?? '—' },
           { kind: 'pair', leftLabel: 'Score', left: row.riskScore == null ? '—' : String(row.riskScore), rightLabel: 'Residual score', right: row.residualRiskScore == null ? '—' : String(row.residualRiskScore) },
-          { kind: 'pair', leftLabel: 'Escalation', left: row.resolvedAt ? `Resolved at ${scopeLabel(row.resolvedAtScope ?? row.currentScope)}` : `At ${scopeLabel(row.currentScope)}`, rightLabel: 'Reported by', right: row.reportedBy?.fullName ?? '—' },
+          { kind: 'pair', leftLabel: 'Escalation', left: row.resolvedAt ? `Resolved at ${scopeLabel(row.resolvedAtScope ?? row.currentScope)}` : `At ${scopeLabel(row.currentScope)}`, rightLabel: 'People exposed', right: row.peopleExposed ? 'Yes' : 'No' },
         ],
       },
       {
@@ -228,6 +230,94 @@ export function jsaReport(row: JsaRecord, preparedBy: string): SheReport {
           { kind: 'text', text: `Tools: ${listed(row.toolsAndEquipment)}` },
           { kind: 'text', text: row.emergencyProcedures ?? 'No emergency procedure recorded.' },
           { kind: 'text', text: row.rejectionNotes ? `Rejection: ${row.rejectionNotes}` : 'Not rejected.' },
+        ],
+      },
+    ],
+  };
+}
+
+export function riskAssessmentReport(
+  row: RiskAssessment,
+  actions: CorrectiveAction[],
+  preparedBy: string,
+): SheReport {
+  const hazards = row.selectedHazards ?? [];
+  const persons = row.personsAtRisk ?? [];
+  const controls = row.controls ?? [];
+  const controlBlocks: ReportBlock[] = controls.length
+    ? controls.flatMap((control, index) => [
+        { kind: 'text' as const, text: `${index + 1}. ${control.identifiedHazard}`, strong: true },
+        {
+          kind: 'pair' as const,
+          leftLabel: 'Consequence',
+          left: words(control.consequence),
+          rightLabel: 'Likelihood',
+          right: words(control.likelihood),
+        },
+        {
+          kind: 'pair' as const,
+          leftLabel: 'Risk',
+          left: control.riskScore == null ? '—' : `${control.riskScore} · ${words(control.riskClass)}`,
+          rightLabel: 'Hierarchy',
+          right: words(control.controlHierarchy),
+        },
+        {
+          kind: 'pair' as const,
+          leftLabel: 'Residual',
+          left:
+            control.residualRiskScore == null
+              ? '—'
+              : `${control.residualRiskScore} · ${words(control.residualRiskClass)}`,
+          rightLabel: 'Implemented',
+          right: control.implemented ? 'Yes' : 'No',
+        },
+        { kind: 'text' as const, text: control.requiredControls || 'No required controls recorded.' },
+      ])
+    : [{ kind: 'text', text: 'No control rows recorded.' }];
+  const conclusion =
+    row.controlConclusion === 'ADEQUATELY_CONTROLLED'
+      ? 'Adequately controlled. No further action required.'
+      : row.controlConclusion === 'INADEQUATELY_CONTROLLED'
+        ? 'Inadequately controlled. Further action / investigation required.'
+        : 'Not recorded.';
+  return {
+    kind: 'Risk assessment',
+    reference: row.referenceCode,
+    title: row.activityBeingDone,
+    preparedBy,
+    sections: [
+      {
+        title: '1. Assessment details',
+        blocks: [
+          { kind: 'pair', leftLabel: 'Reference', left: row.referenceCode, rightLabel: 'Status', right: words(row.status) },
+          {
+            kind: 'pair',
+            leftLabel: 'Assessment date',
+            left: day(row.assessmentDate),
+            rightLabel: 'Assessor(s)',
+            right: row.assessorNames,
+          },
+          place(row.region, row.district),
+          { kind: 'text', text: `Location / workplace: ${row.locationWorkplace}` },
+          { kind: 'text', text: `Activity: ${row.activityBeingDone}` },
+          { kind: 'text', text: `Others consulted: ${row.othersConsulted ?? '—'}` },
+        ],
+      },
+      {
+        title: '2. Hazards and persons at risk',
+        blocks: [
+          { kind: 'text', text: hazards.length ? `Hazards: ${hazards.map((id) => words(id)).join(', ')}` : 'No hazards ticked.' },
+          { kind: 'text', text: persons.length ? `Persons at risk: ${persons.map((id) => words(id)).join(', ')}` : 'No persons selected.' },
+          { kind: 'text', text: row.specificCircumstance ?? 'No specific circumstance recorded.' },
+        ],
+      },
+      { title: '3. Risk assessment and controls', blocks: controlBlocks },
+      {
+        title: '4. Conclusion and actions',
+        blocks: [
+          { kind: 'text', text: conclusion, strong: true },
+          { kind: 'text', text: row.rejectionNotes ? `Sent back: ${row.rejectionNotes}` : 'Not sent back.' },
+          ...actionBlocks(actions, 'No corrective action linked to this assessment.'),
         ],
       },
     ],
