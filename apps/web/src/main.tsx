@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { theme } from './theme/theme';
 import { App } from './App';
 import { checkForAppUpdate } from './pwa/check-for-update';
+import '@fontsource-variable/inter';
 import './index.css';
 
 checkForAppUpdate();

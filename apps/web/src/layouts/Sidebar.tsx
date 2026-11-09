@@ -93,7 +93,12 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                 color: 'white',
                 '& .MuiListItemIcon-root': { color: 'secondary.main' },
               },
-              '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
+              // On touch screens a tap would leave the hover tint stuck on.
+              '&:hover': { bgcolor: 'transparent' },
+              '@media (hover: hover) and (pointer: fine)': {
+                '&:hover': { bgcolor: 'rgba(255,255,255,0.06)' },
+                '&.active:hover': { bgcolor: 'rgba(251, 176, 64, 0.22)' },
+              },
             }}
           >
             <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>{n.icon}</ListItemIcon>

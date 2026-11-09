@@ -15,7 +15,6 @@ import {
   useTheme,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import HelpOutlineRoundedIcon from '@mui/icons-material/HelpOutlineRounded';
 import { ROLE_LABEL } from '@ecg-she/shared';
 import { EcgLogo } from '../components/EcgLogo';
 import { useAuthStore } from '../stores/auth.store';
@@ -38,12 +37,23 @@ export function AppLayout() {
   const [sessionsOpen, setSessionsOpen] = useState(false);
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', maxWidth: '100%', overflowX: 'clip' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        minHeight: '100vh',
+        // Mobile Safari's 100vh is taller than the visible screen.
+        '@supports (height: 100dvh)': { minHeight: '100dvh' },
+        maxWidth: '100%',
+        overflowX: 'clip',
+      }}
+    >
       <AppBar
         position="fixed"
         sx={{
           width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
           ml: { md: `${DRAWER_WIDTH}px` },
+          // Installed iPhone app draws under the status bar (black-translucent).
+          pt: 'env(safe-area-inset-top)',
         }}
       >
         <Toolbar sx={{ gap: { xs: 0.5, sm: 1 }, px: { xs: 1, sm: 2 } }}>
@@ -72,13 +82,8 @@ export function AppLayout() {
             </Box>
           </Box>
           <NotificationsBell />
-          <Tooltip title="Help">
-            <IconButton color="inherit">
-              <HelpOutlineRoundedIcon />
-            </IconButton>
-          </Tooltip>
           <Tooltip title={session?.user.fullName ?? ''}>
-            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
+            <IconButton aria-label="Account menu" onClick={(e) => setAnchorEl(e.currentTarget)}>
               <Avatar sx={{ bgcolor: 'secondary.main', color: 'primary.dark', width: 36, height: 36, fontWeight: 700 }}>
                 {(session?.user.fullName ?? '?')
                   .split(' ')
@@ -113,7 +118,15 @@ export function AppLayout() {
             open={mobileOpen}
             onClose={() => setMobileOpen(false)}
             ModalProps={{ keepMounted: true }}
-            sx={{ '& .MuiDrawer-paper': { width: 'min(264px, 86vw)', bgcolor: 'primary.dark', color: 'white' } }}
+            sx={{
+              '& .MuiDrawer-paper': {
+                width: 'min(264px, 86vw)',
+                bgcolor: 'primary.dark',
+                color: 'white',
+                pt: 'env(safe-area-inset-top)',
+                pb: 'env(safe-area-inset-bottom)',
+              },
+            }}
           >
             <Sidebar onNavigate={() => setMobileOpen(false)} />
           </Drawer>
@@ -144,6 +157,7 @@ export function AppLayout() {
           width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
         }}
       >
+        <Box sx={{ height: 'env(safe-area-inset-top)' }} />
         <Toolbar />
         <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, maxWidth: '100%', minWidth: 0 }}>
           <Outlet />

@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import { Box, Card, CardContent, Stack, Typography } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded';
 
@@ -12,17 +13,9 @@ interface Props {
   icon?: ReactElement;
 }
 
-const ACCENT: Record<NonNullable<Props['accent']>, string> = {
-  primary: '#0B5394',
-  success: '#2E7D32',
-  warning: '#ED6C02',
-  error: '#C62828',
-  info: '#0288D1',
-};
-
 export function KpiCard({ title, value, subtitle, delta, accent = 'primary', icon }: Props) {
   return (
-    <Card className="kpi-card" sx={{ height: '100%' }}>
+    <Card sx={{ height: '100%' }}>
       <CardContent>
         <Stack direction="row" alignItems="flex-start" spacing={2}>
           {icon && (
@@ -31,8 +24,8 @@ export function KpiCard({ title, value, subtitle, delta, accent = 'primary', ico
                 width: 44,
                 height: 44,
                 borderRadius: 2,
-                bgcolor: `${ACCENT[accent]}14`,
-                color: ACCENT[accent],
+                bgcolor: (t) => alpha(t.palette[accent].main, 0.08),
+                color: `${accent}.main`,
                 display: 'grid',
                 placeItems: 'center',
               }}
@@ -44,7 +37,10 @@ export function KpiCard({ title, value, subtitle, delta, accent = 'primary', ico
             <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
               {title}
             </Typography>
-            <Typography variant="h4" sx={{ fontWeight: 700, mt: 0.5, color: 'primary.dark' }}>
+            <Typography
+              variant="h4"
+              sx={{ fontWeight: 700, mt: 0.5, color: 'primary.dark', fontVariantNumeric: 'tabular-nums' }}
+            >
               {value}
             </Typography>
             {(subtitle || typeof delta === 'number') && (
@@ -56,7 +52,12 @@ export function KpiCard({ title, value, subtitle, delta, accent = 'primary', ico
                     ) : (
                       <TrendingDownRoundedIcon fontSize="small" color="error" />
                     )}
-                    <Typography variant="caption" color={delta >= 0 ? 'success.main' : 'error.main'} fontWeight={600}>
+                    <Typography
+                      variant="caption"
+                      color={delta >= 0 ? 'success.main' : 'error.main'}
+                      fontWeight={600}
+                      sx={{ fontVariantNumeric: 'tabular-nums' }}
+                    >
                       {delta >= 0 ? '+' : ''}
                       {delta}%
                     </Typography>

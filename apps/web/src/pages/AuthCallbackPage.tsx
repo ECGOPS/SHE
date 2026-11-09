@@ -29,6 +29,7 @@ export function AuthCallbackPage() {
     <Box
       sx={{
         minHeight: '100vh',
+        '@supports (height: 100dvh)': { minHeight: '100dvh' },
         display: 'grid',
         placeItems: 'center',
         background: 'linear-gradient(135deg, #0B1A2B 0%, #0B5394 100%)',

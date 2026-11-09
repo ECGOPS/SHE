@@ -40,6 +40,7 @@ import {
   Role,
 } from '@ecg-she/shared';
 import { canSeePath } from '../layouts/nav-access';
+import { pressableCardSx } from '../theme/theme';
 
 /* -------------------------------------------------------------------------- */
 /*  Helpers                                                                   */
@@ -88,21 +89,20 @@ interface KpiTileProps {
 
 function KpiTile({ title, value, subtitle, icon, accent, to }: KpiTileProps) {
   const card = (
-    <Card
-      sx={{
-        height: '100%',
-        transition: 'all 0.2s',
-        cursor: to ? 'pointer' : 'default',
-        '&:hover': to ? { boxShadow: 4, transform: 'translateY(-2px)' } : undefined,
-      }}
-    >
+    <Card sx={[{ height: '100%' }, to ? pressableCardSx : null]}>
       <CardContent>
         <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
           <Stack spacing={0.25} sx={{ flex: 1 }}>
             <Typography variant="overline" color="text.secondary">
               {title}
             </Typography>
-            <Typography variant="h3" fontWeight={800} color={`${accent}.main`} lineHeight={1}>
+            <Typography
+              variant="h3"
+              fontWeight={800}
+              color={`${accent}.main`}
+              lineHeight={1}
+              sx={{ fontVariantNumeric: 'tabular-nums' }}
+            >
               {value}
             </Typography>
             {subtitle && (
