@@ -76,7 +76,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         </Box>
       </Box>
       <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)' }} />
-      <List sx={{ flex: 1, overflowY: 'auto', py: 1 }}>
+      <List sx={{ flex: 1, overflowY: 'auto', overscrollBehavior: 'contain', py: 1 }}>
         {NAV.filter((n) => canSeePath(role, n.to)).map((n) => (
           <ListItemButton
             key={n.to}

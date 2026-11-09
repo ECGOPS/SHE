@@ -127,7 +127,9 @@ export function LoginPage() {
         display: 'flex',
         flexDirection: 'column',
         background: 'linear-gradient(135deg, #0B1A2B 0%, #0B5394 60%, #1F77BD 100%)',
-        py: { xs: 2, sm: 4 },
+        // Clear the status bar and home indicator in the installed iPhone app.
+        pt: { xs: 'max(16px, env(safe-area-inset-top))', sm: 'max(32px, env(safe-area-inset-top))' },
+        pb: { xs: 'max(16px, env(safe-area-inset-bottom))', sm: 'max(32px, env(safe-area-inset-bottom))' },
         pl: { xs: 'max(12px, env(safe-area-inset-left))', sm: 'max(16px, env(safe-area-inset-left))' },
         pr: { xs: 'max(12px, env(safe-area-inset-right))', sm: 'max(16px, env(safe-area-inset-right))' },
       }}
@@ -157,7 +159,8 @@ export function LoginPage() {
                 startIcon={<MicrosoftLogo />}
                 sx={{
                   bgcolor: '#2F2F2F',
-                  '&:hover': { bgcolor: '#1f1f1f' },
+                  '&:hover': { bgcolor: '#2F2F2F' },
+                  '@media (hover: hover) and (pointer: fine)': { '&:hover': { bgcolor: '#1f1f1f' } },
                   py: 1.4,
                   px: { xs: 1.5, sm: 2 },
                   fontSize: { xs: 14, sm: 15 },
@@ -223,7 +226,8 @@ export function LoginPage() {
                       label="6-digit MFA code" value={mfaCode}
                       onChange={(e) => setMfaCode(e.target.value)}
                       autoFocus fullWidth required
-                      inputProps={{ inputMode: 'numeric', pattern: '[0-9]{6}', maxLength: 6 }}
+                      autoComplete="one-time-code"
+                      inputProps={{ inputMode: 'numeric', pattern: '[0-9]{6}', maxLength: 6, enterKeyHint: 'done' }}
                     />
                   )}
                   <Button type="submit" variant="outlined" size="large" disabled={loading}>
@@ -288,7 +292,8 @@ export function LoginPage() {
                         px: 1.5,
                         py: 1,
                         cursor: 'pointer',
-                        '&:hover': { bgcolor: 'action.hover' },
+                        '@media (hover: hover) and (pointer: fine)': { '&:hover': { bgcolor: 'action.hover' } },
+                        '&:active': { bgcolor: 'action.selected' },
                       }}
                     >
                       <Box sx={{ minWidth: 0 }}>
